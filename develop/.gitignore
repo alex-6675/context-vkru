@@ -1,0 +1,14 @@
+# Артефакты сборки
+develop/EdgeExtension/dist/
+
+# Логи
+*.log
+
+# Редактор/IDE
+.vscode/*.db
+.vscode/*.tmp
+*.code-workspace
+
+# ОС
+Thumbs.db
+.DS_Store
