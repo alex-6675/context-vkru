@@ -64,7 +64,7 @@ Microsoft Edge в **отдельном чистом профиле**, чтобы
 Откройте терминал (PowerShell 7) и выполните:
 
 ```powershell
-cd путь-до-папки-develop\scripts
+cd путь-до-папки-scripts
 .\run-edge-vk-test.ps1
 ```
 
