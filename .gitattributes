@@ -1,1 +1,14 @@
+# Автоопределение окончаний строк
+* text=auto
 
+# Текстовые файлы — LF
+*.js   text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css  text eol=lf
+*.md   text eol=lf
+*.ps1  text eol=crlf
+
+# Бинарные файлы
+*.png binary
+*.ico binary
