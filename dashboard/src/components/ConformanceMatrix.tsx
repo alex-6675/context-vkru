@@ -97,6 +97,11 @@ export default function ConformanceMatrix() {
                           <span className={`h-1.5 w-1.5 rounded-full ${chip.dot}`} />
                           {chip.label}
                         </span>
+                        {item.since && (
+                          <span className="hidden rounded-sm border border-steel/40 bg-steel/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider text-steel sm:inline-flex">
+                            файл · {item.since}
+                          </span>
+                        )}
                         <span className="mt-1 hidden font-mono text-[10.5px] text-faint opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:block">
                           {item.doc}
                         </span>

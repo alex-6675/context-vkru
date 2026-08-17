@@ -1,10 +1,11 @@
-import { type ReactNode } from "react";
+import { useState } from "react";
 import Reveal from "./components/Reveal";
 import Terminal from "./components/Terminal";
 import ScoreRing from "./components/ScoreRing";
 import ConformanceMatrix from "./components/ConformanceMatrix";
 import Roadmap from "./components/Roadmap";
 import Steps from "./components/Steps";
+import V01Sheet, { type Verdict } from "./components/V01Sheet";
 import {
   counts,
   stages,
@@ -19,6 +20,20 @@ const DOC_ARCH =
   "https://github.com/alex-6675/context-vkru/blob/main/docs/architecture.md";
 const DOC_REG =
   "https://github.com/alex-6675/context-vkru/blob/main/docs/%D0%A0%D0%95%D0%93%D0%9B%D0%90%D0%9C%D0%95%D0%9D%D0%A2_%D0%A0%D0%90%D0%91%D0%9E%D0%A2_v2_0.md";
+
+const VERDICT_KEY = "ctxvkru-verdict-v01";
+
+const extensionFiles = [
+  "EdgeExtension/manifest.json",
+  "EdgeExtension/src/background.js",
+  "EdgeExtension/src/content.js",
+  "reports/v_01/BUILD.md",
+  "reports/v_01/TEST.md",
+  "reports/v_01/RESULT.md",
+  "scripts/Build.ps1",
+  "scripts/Clean.ps1",
+  "scripts/Test.ps1",
+];
 
 /* ---------- мелкие svg-иконки ---------- */
 
@@ -57,7 +72,7 @@ function SectionHead({
           {title}
         </h2>
       </div>
-      <p className="mt-2 max-w-2xl pl-0 text-[14px] leading-relaxed text-dim sm:pl-[52px]">
+      <p className="mt-2 max-w-3xl text-[14px] leading-relaxed text-dim sm:pl-[52px]">
         {sub}
       </p>
       <div className="mt-4 h-px w-full bg-gradient-to-r from-line2 via-line to-transparent" />
@@ -68,6 +83,33 @@ function SectionHead({
 /* ---------- приложение ---------- */
 
 export default function App() {
+  const [verdict, setVerdictState] = useState<Verdict>(() => {
+    try {
+      const raw = localStorage.getItem(VERDICT_KEY);
+      if (raw === "pass" || raw === "fail") return raw;
+    } catch {
+      /* приватный режим */
+    }
+    return null;
+  });
+
+  const setVerdict = (v: Verdict) => {
+    setVerdictState(v);
+    try {
+      if (v) localStorage.setItem(VERDICT_KEY, v);
+      else localStorage.removeItem(VERDICT_KEY);
+    } catch {
+      /* приватный режим */
+    }
+  };
+
+  const statusChip =
+    verdict === "pass"
+      ? { cls: "border-pass/50 bg-pass/10 text-pass", dot: "bg-pass", label: "v_01 · PASS" }
+      : verdict === "fail"
+        ? { cls: "border-fail/50 bg-fail/10 text-fail", dot: "bg-fail", label: "v_01 · FAIL" }
+        : { cls: "border-warn/50 bg-warn/10 text-warn", dot: "bg-warn", label: "v_01 · ждёт Edge" };
+
   return (
     <div className="relative min-h-screen font-body text-ink">
       {/* фоновые слои */}
@@ -110,13 +152,15 @@ export default function App() {
                 href={DOC_REG}
                 target="_blank"
                 rel="noreferrer"
-                className="filter-btn flex items-center gap-1.5 border border-line bg-panel px-3 py-1.5 font-mono text-[10.5px] tracking-wide text-dim hover:border-steel hover:text-ink"
+                className="filter-btn hidden items-center gap-1.5 border border-line bg-panel px-3 py-1.5 font-mono text-[10.5px] tracking-wide text-dim hover:border-steel hover:text-ink md:flex"
               >
                 РЕГЛАМЕНТ v2.0 <IconExt />
               </a>
-              <span className="flex items-center gap-1.5 border border-fail/40 bg-fail/10 px-3 py-1.5 font-mono text-[10.5px] font-bold tracking-wider text-fail">
-                <span className="blink-soft h-1.5 w-1.5 rounded-full bg-fail" />
-                FAIL
+              <span
+                className={`flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[10.5px] font-bold tracking-wider ${statusChip.cls}`}
+              >
+                <span className={`blink-soft h-1.5 w-1.5 rounded-full ${statusChip.dot}`} />
+                {statusChip.label}
               </span>
             </div>
           </div>
@@ -128,62 +172,91 @@ export default function App() {
             <div>
               <Reveal>
                 <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-steel">
-                  Отчёт о сверке · локальное репо ⇄ документация
+                  Шаг 1 / v_01 · контрольный каркас собран
                 </p>
                 <h1 className="mt-4 font-display text-[clamp(1.9rem,4.6vw,3.3rem)] font-extrabold leading-[1.08] tracking-tight text-ink">
-                  Архитектура есть.
+                  Каркас собран.
                   <br />
-                  <span className="text-fail">Кода — нет.</span>
+                  <span className={verdict === "pass" ? "text-pass" : verdict === "fail" ? "text-fail" : "text-steel"}>
+                    {verdict === "pass"
+                      ? "PASS принят — курс на v_02."
+                      : verdict === "fail"
+                        ? "FAIL — итерация внутри v_01."
+                        : "Теперь — ваш Edge."}
+                  </span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-dim">
-                  Локальный репозиторий — чистый шаблон{" "}
-                  <span className="font-mono text-[13px] text-ink">Vite + React + TS</span>.
-                  Сверено <span className="font-semibold text-ink">{counts.total} требований</span>{" "}
-                  из <span className="font-mono text-ink">architecture.md</span> и{" "}
-                  <span className="font-mono text-ink">РЕГЛАМЕНТ_РАБОТ v2.0</span>: не найдено ни
-                  одного артефакта расширения — от{" "}
-                  <span className="font-mono text-ink">manifest.json</span> до{" "}
-                  <span className="font-mono text-ink">adapters/vkru.js</span>. Единственный PASS —
-                  запрет на перенос legacy (§K), и тот тривиальный.
+                  По регламенту выполнен Шаг 1: в репо создан минимальный пакет{" "}
+                  <span className="font-mono text-[13px] text-ink">EdgeExtension/</span> — MV3-манифест,
+                  Service Worker и content script на чистом Vanilla JS (§2.2), плюс{" "}
+                  <span className="font-mono text-[13px] text-ink">reports/v_01/</span> и PowerShell-скрипты
+                  (§L). Дальше — только ручная проверка: загрузить в Edge, найти строку{" "}
+                  <span className="font-mono text-[12.5px] text-pass">[CTX v_01] content script active on vk.ru</span>{" "}
+                  и зафиксировать вердикт в RESULT.md.
                 </p>
               </Reveal>
 
               <Reveal delay={120}>
                 <div className="mt-6 flex flex-wrap gap-2">
-                  <span className="border border-fail/50 bg-fail/10 px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-fail">
-                    Вердикт: не соответствует
+                  <span
+                    className={`border px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider ${
+                      verdict === "pass"
+                        ? "border-pass/50 bg-pass/10 text-pass"
+                        : verdict === "fail"
+                          ? "border-fail/50 bg-fail/10 text-fail"
+                          : "border-warn/50 bg-warn/10 text-warn"
+                    }`}
+                  >
+                    {verdict === "pass"
+                      ? "Вердикт: PASS (зафиксирован)"
+                      : verdict === "fail"
+                        ? "Вердикт: FAIL (зафиксирован)"
+                        : "Вердикт: ожидает Пользователя"}
                   </span>
                   <span className="border border-line bg-panel px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-dim">
-                    сборок: 0 / {stages.length}
+                    пакет: 3 файла · 0 зависимостей
                   </span>
                   <span className="border border-steel/50 bg-steel/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-steel">
-                    следующий шаг: Этап 0 · v_01
+                    {verdict === "pass" ? "далее: v_02 PING/PONG" : "этап: 0 · v_01"}
                   </span>
                 </div>
               </Reveal>
 
               <Reveal delay={200}>
-                <div className="mt-7">
-                  <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
-                    Что реально лежит в репо
-                  </p>
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {templateFiles.map((f) => (
-                      <span
-                        key={f}
-                        className="border border-line bg-inset px-2.5 py-1 font-mono text-[11px] text-dim transition-colors hover:border-line2 hover:text-ink"
-                      >
-                        {f}
-                      </span>
-                    ))}
-                    <span className="border border-warn/40 bg-warn/10 px-2.5 py-1 font-mono text-[11px] text-warn">
-                      + 12 npm-зависимостей
-                    </span>
+                <div className="mt-7 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-pass/80">
+                      Пакет расширения · создан
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {extensionFiles.map((f) => (
+                        <span
+                          key={f}
+                          className="border border-pass/25 bg-pass/[0.06] px-2.5 py-1 font-mono text-[11px] text-dim transition-colors hover:border-pass/50 hover:text-ink"
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <p className="mt-2.5 text-[12.5px] leading-relaxed text-faint">
-                    Ни один из этих файлов не относится к расширению. Корень, загружаемый в Edge,
-                    должен быть другим (§L, §2.3).
-                  </p>
+                  <div>
+                    <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
+                      Шаблон · вне пакета (§2.2)
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {templateFiles.map((f) => (
+                        <span
+                          key={f}
+                          className="border border-line bg-inset px-2.5 py-1 font-mono text-[11px] text-faint transition-colors hover:border-line2 hover:text-dim"
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-2.5 text-[12.5px] leading-relaxed text-faint">
+                      В корень, загружаемый в Edge, не попадает ни одной npm-зависимости.
+                    </p>
+                  </div>
                 </div>
               </Reveal>
             </div>
@@ -206,24 +279,33 @@ export default function App() {
               </div>
 
               <div className="bg-panel px-5 py-5">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Артефакты расширения</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+                  Артефакты v_01
+                </p>
                 <p className="mt-2 font-display text-3xl font-extrabold text-ink">
-                  0<span className="text-lg text-faint"> / 14</span>
+                  {extensionFiles.length}
+                  <span className="text-lg text-faint"> / {extensionFiles.length}</span>
                 </p>
                 <p className="mt-1.5 text-[12px] leading-snug text-dim">
-                  manifest, background, content, адаптер, core, ui, styles, иконки
+                  манифест, SW, content script, отчёты, скрипты — на месте
                 </p>
               </div>
 
               <div className="bg-panel px-5 py-5">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Сборки по этапам</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+                  Сборки по этапам
+                </p>
                 <p className="mt-2 font-display text-3xl font-extrabold text-ink">
-                  v_00<span className="text-lg text-faint"> → v_01</span>
+                  v_01<span className="text-lg text-faint"> / {stages.length}</span>
                 </p>
                 <div className="mt-3 h-1 overflow-hidden rounded-full bg-line">
-                  <div className="progress-fill h-full w-[2%] rounded-full bg-steel" />
+                  <div
+                    className={`progress-fill h-full rounded-full ${verdict === "pass" ? "w-[13%] bg-pass" : "w-[6%] bg-steel"}`}
+                  />
                 </div>
-                <p className="mt-1.5 text-[12px] text-dim">0 из {stages.length} подтверждено</p>
+                <p className="mt-1.5 text-[12px] text-dim">
+                  {verdict === "pass" ? "v_01 подтверждён — далее v_02" : "v_01 на ручной проверке"}
+                </p>
               </div>
 
               <div className="bg-panel px-5 py-5">
@@ -239,28 +321,87 @@ export default function App() {
           </Reveal>
         </section>
 
-        {/* 01 — матрица */}
+        {/* 01 — шаг 1 / v_01 */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
             num="01"
+            title="Шаг 1 · v_01 — контрольный каркас"
+            sub="Рабочий лист сборки: листинги создаваемых файлов (дословные копии из репо), поток этапа, инструкция загрузки в Edge и критерии TEST.md. Вердикт фиксируете вы — он сохраняется локально и управляет всей сводкой выше."
+          />
+          <V01Sheet verdict={verdict} setVerdict={setVerdict} />
+        </section>
+
+        {/* 02 — дорожная карта */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="02"
+            title="Дорожная карта v_01 — v_15"
+            sub="Часть 6 регламента: строго последовательно, один модуль — одна тестовая сборка. Клик по этапу раскрывает цель и PASS-критерий; v_01 пульсирует как текущая работа."
+          />
+          <Roadmap />
+        </section>
+
+        {/* 03 — матрица */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="03"
             title="Сверка с architecture.md"
-            sub={`Постатейная проверка документа: границы и стек (§B), компоненты (§D), контракт ENTITY (§E), идентификация (§F–I), сценарий ПКМ (§J), отказ от legacy (§K) и структура каталогов (§L). Всего ${counts.total} пунктов.`}
+            sub={`Постатейная проверка: границы и стек (§B), компоненты (§D), контракт ENTITY (§E), идентификация (§F–I), сценарий ПКМ (§J), отказ от legacy (§K), структура каталогов (§L). Всего ${counts.total} пунктов. Бейдж «файл · v_01» — артефакт уже создан в шаге 1, полная функция по плану приходит в следующих сборках.`}
           />
           <ConformanceMatrix />
         </section>
 
-        {/* 02 — стек */}
+        {/* 04 — контракт */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="02"
-            title="Конфликт стека"
-            sub="Единственный WARN аудита — но системный: текущий шаблон собран на том, что регламент прямо запрещает внутри расширения. Конфликт решается разведением корней, а не переписыванием."
+            num="04"
+            title="Контракт ENTITY"
+            sub="Часть 3 регламента: структура заморожена, компоненты обмениваются только ею. Четыре полевых правила — что можно считать ключом, а что запрещено трогать."
+          />
+          <div className="grid gap-5 lg:grid-cols-[1.15fr_1fr]">
+            <Reveal>
+              <div className="cornered h-full border border-line bg-inset/90">
+                <div className="flex items-center justify-between border-b border-line px-5 py-2.5">
+                  <span className="font-mono text-[11px] tracking-wider text-faint">
+                    entity.contract · зафиксирован
+                  </span>
+                  <span className="border border-warn/40 bg-warn/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider text-warn">
+                    не менять без согласования
+                  </span>
+                </div>
+                <pre className="overflow-x-auto px-5 py-4 font-mono text-[12px] leading-[1.8] text-dim">
+                  {entityContract}
+                </pre>
+              </div>
+            </Reveal>
+            <div className="space-y-3">
+              {entityNotes.map((n, i) => (
+                <Reveal key={n.field} delay={i * 80}>
+                  <div className="req-row group border border-line bg-panel/70 px-4 py-3.5 transition-all hover:bg-panel" data-status="warn">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-mono text-[12px] font-bold text-ink">{n.field}</p>
+                      <span className="font-mono text-[10px] tracking-wider text-steel">{n.doc}</span>
+                    </div>
+                    <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">{n.rule}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 05 — стек */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="05"
+            title="Конфликт стека — решён разведением корней"
+            sub="Единственный WARN аудита (§2.2): шаблон собран на том, что регламент запрещает внутри расширения. Пакет EdgeExtension/ пишется на Vanilla JS с нулём зависимостей — шаблон остаётся снаружи."
           />
           <div className="grid gap-5 md:grid-cols-2">
             <Reveal>
               <div className="cornered h-full border border-fail/30 bg-panel/80 p-5 sm:p-6">
                 <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-fail">
-                  Как есть · package.json
+                  Как было · package.json
                 </p>
                 <h3 className="mt-1.5 font-display text-[16px] font-bold text-ink">
                   Vite-шаблон с фреймворками
@@ -297,75 +438,24 @@ export default function App() {
           <Reveal delay={160}>
             <div className="mt-5 border border-line bg-inset/80 p-5 sm:p-6">
               <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-steel">
-                Предлагаемое решение
+                Реализовано в шаге 1
               </p>
               <p className="mt-2 max-w-3xl text-[14px] leading-relaxed text-dim">
-                Расширение живёт в <span className="font-mono text-[12.5px] text-ink">EdgeExtension/</span>{" "}
-                и пишется на чистом Vanilla JS — в корень, загружаемый в Edge, не попадает ни одной
-                npm-зависимости. Vite/React-шаблон остаётся <em className="not-italic text-ink">вне</em>{" "}
-                этого корня: его можно архивировать либо оставить отдельным инструментом проекта —
-                например, дашбордом процесса (этот отчёт). Менять стек расширения «для удобства»
-                запрещено правилом §5.3.
+                <span className="font-mono text-[12.5px] text-ink">EdgeExtension/</span> — самодостаточный
+                пакет: три файла, ноль зависимостей, загружается в Edge напрямую. Менять стек расширения
+                «для удобства» запрещено (§5.3); шаблон может жить своей жизнью вне пакета — например,
+                как этот рабочий лист процесса.
               </p>
             </div>
           </Reveal>
         </section>
 
-        {/* 03 — контракт */}
+        {/* 06 — чек-лист */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="03"
-            title="Контракт ENTITY"
-            sub="Часть 3 регламента: структура заморожена, компоненты обмениваются только ею. Четыре полевых правила — что можно считать ключом, а что запрещено трогать."
-          />
-          <div className="grid gap-5 lg:grid-cols-[1.15fr_1fr]">
-            <Reveal>
-              <div className="cornered h-full border border-line bg-inset/90">
-                <div className="flex items-center justify-between border-b border-line px-5 py-2.5">
-                  <span className="font-mono text-[11px] tracking-wider text-faint">
-                    entity.contract · зафиксирован
-                  </span>
-                  <span className="border border-warn/40 bg-warn/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider text-warn">
-                    не менять без согласования
-                  </span>
-                </div>
-                <pre className="overflow-x-auto px-5 py-4 font-mono text-[12px] leading-[1.8] text-dim">
-                  {entityContract}
-                </pre>
-              </div>
-            </Reveal>
-            <div className="space-y-3">
-              {entityNotes.map((n, i) => (
-                <Reveal key={n.field} delay={i * 80}>
-                  <div className="req-row group border border-line bg-panel/70 px-4 py-3.5 transition-all hover:bg-panel" data-status="warn">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-mono text-[12px] font-bold text-ink">{n.field}</p>
-                      <span className="font-mono text-[10px] tracking-wider text-steel">{n.doc}</span>
-                    </div>
-                    <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">{n.rule}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 04 — дорожная карта */}
-        <section className="mx-auto max-w-6xl px-5 py-14">
-          <SectionHead
-            num="04"
-            title={`Дорожная карта v_01 — v_15`}
-            sub="Часть 6 регламента: строго последовательно, один модуль — одна тестовая сборка. Клик по этапу раскрывает цель и PASS-критерий; v_01 пульсирует как ближайшая работа."
-          />
-          <Roadmap />
-        </section>
-
-        {/* 05 — предложения */}
-        <section className="mx-auto max-w-6xl px-5 py-14">
-          <SectionHead
-            num="05"
-            title="Предложения: с чего начать"
-            sub="Семь шагов до первой подтверждённой сборки. Чек-лист сохраняется локально; справа — готовый шаблон задания M-01 по форме §7, его можно скопировать одной кнопкой и отдать в работу."
+            num="06"
+            title="Чек-лист запуска"
+            sub="Семь шагов до первой подтверждённой сборки. s3 и s4 уже отмечены — артефакты созданы в шаге 1. Прогресс сохраняется локально; справа — шаблон задания M-01 по форме §7 (копируется одной кнопкой)."
           />
           <Steps />
         </section>
@@ -380,10 +470,11 @@ export default function App() {
                     СТОП<span className="text-fail">.</span>
                   </p>
                   <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-dim">
-                    Ожидание <span className="font-mono text-[12.5px] text-ink">RESULT.md</span> от
-                    Пользователя. Статус PASS устанавливает только человек после ручной проверки в
-                    Edge — LLM не имеет права объявлять тесты пройденными (§5.6) и переходить
-                    дальше после FAIL (§5.1).
+                    {verdict === "pass"
+                      ? "RESULT.md зафиксирован: v_01 = PASS. Следующая итерация — M-02 / v_02 «Диагностический канал» (PING/PONG). Запросите задание — соберу по шаблону §7."
+                      : verdict === "fail"
+                        ? "v_01 = FAIL: остаёмся внутри этапа (§5.1). Опишите причину в RESULT.md, исправьте пакет и повторите тест — переход к v_02 запрещён."
+                        : "Ожидание RESULT.md от Пользователя: загрузите пакет в Edge, сверьте строки из TEST.md и зафиксируйте вердикт в рабочем листе шага 1. Статус устанавливает только человек (§5.6)."}
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 font-mono text-[11.5px] text-faint">
@@ -394,7 +485,7 @@ export default function App() {
                     docs/РЕГЛАМЕНТ_РАБОТ_v2_0.md <IconExt />
                   </a>
                   <span className="mt-1 text-line2">—</span>
-                  <span>отчёт собран по двум документам · сверка: {counts.total} пунктов</span>
+                  <span>шаг 1 / v_01 · пакет собран · вердикт: {verdict ? verdict.toUpperCase() : "ОЖИДАНИЕ"}</span>
                 </div>
               </div>
             </Reveal>

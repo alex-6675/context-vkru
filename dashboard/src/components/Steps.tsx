@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { steps, taskSheet } from "../data/audit";
+import { steps, stepsPreChecked, taskSheet } from "../data/audit";
 import Reveal from "./Reveal";
 
 const LS_KEY = "ctxvkru-start-steps-v1";
@@ -7,10 +7,12 @@ const LS_KEY = "ctxvkru-start-steps-v1";
 function loadDone(): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+    if (raw) return JSON.parse(raw) as Record<string, boolean>;
   } catch {
-    return {};
+    /* приватный режим — работаем с дефолтом */
   }
+  /* s3/s4 уже выполнены самим процессом: артефакты v_01 созданы в шаге 1 */
+  return Object.fromEntries(stepsPreChecked.map((id) => [id, true]));
 }
 
 export default function Steps() {

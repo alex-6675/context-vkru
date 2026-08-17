@@ -1,78 +1,27 @@
-#Requires -Version 7.0
+# Test.ps1 — статическая проверка состава сборки v_01
+# (фактический PASS/FAIL — только вручную в Edge, см. reports/v_01/TEST.md, §5.6)
+$ErrorActionPreference = "Stop"
 
-<#
-.SYNOPSIS
-    Запуск тестов расширения «Context VK.RU».
-.DESCRIPTION
-    Выполняет модульные тесты (если настроены) и проверяет
-    целостность структуры EdgeExtension/src/ под наш набор файлов.
-#>
-
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-
-$ExtDir = Join-Path $PSScriptRoot '..\EdgeExtension'
-$SrcDir = Join-Path $ExtDir 'src'
-
-Write-Host "=== Тестирование расширения ===" -ForegroundColor Cyan
-
-# 1. Проверка наличия ключевых файлов
-$RequiredFiles = @(
-    'manifest.json',
-    'background.js',
-    'content.js',
-    'popup.html',
-    'popup.js',
-    'dialog.html',
-    'styles.css',
-    'adapters\vkru.js',
-    'core\storage.js',
-    'core\messaging.js',
-    'ui\dialog.js',
-    'ui\layer.js'
+$root = Split-Path -Parent $PSScriptRoot
+$required = @(
+    "EdgeExtension\manifest.json",
+    "EdgeExtension\src\background.js",
+    "EdgeExtension\src\content.js",
+    "reports\v_01\BUILD.md",
+    "reports\v_01\TEST.md",
+    "reports\v_01\RESULT.md"
 )
 
-$AllOk = $true
-foreach ($File in $RequiredFiles) {
-    $Path = Join-Path $SrcDir $File
-    if (Test-Path $Path) {
-        Write-Host "[OK] $File" -ForegroundColor Green
+$failed = 0
+foreach ($f in $required) {
+    $p = Join-Path $root $f
+    if (Test-Path $p) {
+        Write-Host "  [PASS] $f"
     } else {
-        Write-Host "[FAIL] $File — отсутствует!" -ForegroundColor Red
-        $AllOk = $false
+        Write-Host "  [FAIL] $f — отсутствует"
+        $failed++
     }
 }
 
-# 2. Проверка локализации (ru, en)
-$Locales = @('ru', 'en')
-foreach ($Locale in $Locales) {
-    $MessagesPath = Join-Path $SrcDir "_locales\$Locale\messages.json"
-    if (Test-Path $MessagesPath) {
-        Write-Host "[OK] _locales/$Locale/messages.json" -ForegroundColor Green
-    } else {
-        Write-Host "[FAIL] _locales/$Locale/messages.json — отсутствует!" -ForegroundColor Red
-        $AllOk = $false
-    }
-}
-
-# 3. Проверка иконок (необязательно, но желательно)
-$IconDir = Join-Path $SrcDir 'icons'
-if (Test-Path $IconDir) {
-    $Icons = Get-ChildItem $IconDir -Filter '*.png'
-    if ($Icons.Count -gt 0) {
-        Write-Host "[OK] Иконок найдено: $($Icons.Count)" -ForegroundColor Green
-    } else {
-        Write-Host "[WARN] Папка icons/ пуста" -ForegroundColor Yellow
-    }
-} else {
-    Write-Host "[WARN] Папка icons/ отсутствует" -ForegroundColor Yellow
-}
-
-# 4. Итог
-if ($AllOk) {
-    Write-Host "=== Все проверки пройдены ===" -ForegroundColor Cyan
-    exit 0
-} else {
-    Write-Host "=== Обнаружены проблемы ===" -ForegroundColor Red
-    exit 1
-}
+if ($failed -gt 0) { Write-Error "Отсутствует файлов: $failed"; exit 1 }
+Write-Host "OK: состав v_01 полный. Далее — ручная проверка в Edge."

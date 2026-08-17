@@ -1,23 +1,13 @@
-#Requires -Version 7.0
+# Clean.ps1 — очистка артефактов сборки (dist/)
+# Запуск: pwsh ./scripts/Clean.ps1
+$ErrorActionPreference = "Stop"
 
-<#
-.SYNOPSIS
-    Очистка артефактов сборки расширения «Context VK.RU».
-#>
+$root = Split-Path -Parent $PSScriptRoot
+$out  = Join-Path $root "dist"
 
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-
-$ExtDir  = Join-Path $PSScriptRoot '..\EdgeExtension'
-$DistDir = Join-Path $ExtDir 'dist'
-
-Write-Host "=== Очистка артефактов сборки ===" -ForegroundColor Cyan
-
-if (Test-Path $DistDir) {
-    Remove-Item -Recurse -Force $DistDir
-    Write-Host "[OK] dist/ удалена" -ForegroundColor Green
+if (Test-Path $out) {
+    Remove-Item $out -Recurse -Force
+    Write-Host "OK: dist/ удалён"
 } else {
-    Write-Host "[INFO] dist/ не найдена — ничего удалять" -ForegroundColor Yellow
+    Write-Host "OK: dist/ отсутствует, чистить нечего"
 }
-
-Write-Host "=== Очистка завершена ===" -ForegroundColor Cyan

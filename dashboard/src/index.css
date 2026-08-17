@@ -241,6 +241,59 @@ body {
     border-color 0.2s ease;
 }
 
+/* ---------- просмотрщик кода ---------- */
+.code-scroll {
+  scrollbar-width: thin;
+}
+.tok-com {
+  color: #5d748c;
+  font-style: italic;
+}
+.tok-str {
+  color: #e4b458;
+}
+.tok-kw {
+  color: #6cc3e8;
+}
+.tok-lit {
+  color: #ff7a6b;
+}
+.tok-obj {
+  color: #e8f1f8;
+  font-weight: 600;
+}
+.tok-num {
+  color: #f0a868;
+}
+
+.tab-btn::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--color-steel);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.tab-btn:hover::after {
+  transform: scaleX(0.4);
+}
+.tab-btn.tab-active::after {
+  transform: scaleX(1);
+}
+.tab-btn:focus-visible {
+  outline: 1px solid var(--color-steel);
+  outline-offset: 2px;
+}
+
+.verdict-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
 /* ---------- мигание статуса ---------- */
 @keyframes soft-blink {
   0%,

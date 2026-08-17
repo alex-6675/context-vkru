@@ -6,6 +6,8 @@ export interface ReqItem {
   status: Status;
   note: string;
   doc: string;
+  /** Пометка: артефакт появился в сборке v_XX (файл создан, полная функция — позже) */
+  since?: string;
 }
 
 export interface ReqGroup {
@@ -43,15 +45,17 @@ export const reqGroups: ReqGroup[] = [
         id: "background",
         req: "background.js — Service Worker (contextMenus, storage, маршрутизация)",
         status: "fail",
-        note: "Отсутствует. По архитектуре — единственный владелец chrome.storage и chrome.contextMenus.",
+        note: "В v_01 создана заглушка (жизненный цикл SW). Полная ответственность — contextMenus, storage, маршрутизация — по плану с v_02/v_10.",
         doc: "architecture.md §D.3",
+        since: "v_01",
       },
       {
         id: "content",
         req: "content.js — точка входа Content Script (MutationObserver, делегирование адаптеру, инъекция UI-слоя)",
         status: "fail",
-        note: "Отсутствует. Это первый код, который должен появиться в сборке v_01.",
+        note: "В v_01 создан: сигнал запуска на vk.ru. MutationObserver и инъекция UI-слоя — с v_03/v_07 по плану.",
         doc: "architecture.md §D.1",
+        since: "v_01",
       },
       {
         id: "adapter",
@@ -145,29 +149,33 @@ export const reqGroups: ReqGroup[] = [
         id: "root",
         req: "EdgeExtension/ — корень расширения (загружается в Edge в режиме разработчика)",
         status: "fail",
-        note: "Отсутствует. Вместо него — корень Vite-шаблона (index.html, src/, vite.config.js).",
+        note: "Создан в шаге 1: manifest.json + src/. Vite-шаблон вынесен за пределы пакета, в Edge загружается только EdgeExtension/.",
         doc: "architecture.md §L",
+        since: "v_01",
       },
       {
         id: "manifest-files",
         req: "manifest.json, popup.html, dialog.html, icons/ (16, 48, 128)",
         status: "fail",
-        note: "Отсутствуют. Иконки и минимальный MV3-манифест — артефакты сборки v_01.",
+        note: "manifest.json создан (MV3, 0.0.1). popup.html / dialog.html — этапы 8–9; фирменные иконки 16/48/128 — косметика после PASS (сейчас штатная).",
         doc: "architecture.md §L",
+        since: "v_01",
       },
       {
         id: "scripts",
         req: "scripts/ — Build.ps1, Clean.ps1, Test.ps1 (PowerShell)",
         status: "fail",
-        note: "Отсутствует. Целевая ОС — Windows 10/11 (§2.1).",
+        note: "Созданы Build.ps1 / Clean.ps1 / Test.ps1 (состав v_01). Целевая ОС — Windows 10/11 (§2.1).",
         doc: "architecture.md §L",
+        since: "v_01",
       },
       {
         id: "reports",
         req: "reports/ — артефакты сборок: v_XX/{BUILD.md, TEST.md, RESULT.md}",
         status: "fail",
-        note: "Отсутствует. Без RESULT.md от Пользователя переход к следующему этапу запрещён (§4).",
+        note: "Создана: reports/v_01/{BUILD.md, TEST.md, RESULT.md}. Вердикт RESULT.md — только от Пользователя (§5.6).",
         doc: "РЕГЛАМЕНТ ч.4",
+        since: "v_01",
       },
       {
         id: "docs",
@@ -392,7 +400,10 @@ export const termLines: TermLine[] = [
   { type: "pass", text: "§K: legacy-логика не перенесена .... тривиально PASS" },
   { type: "arrow", text: "итог: 1 PASS · 1 WARN · 15 FAIL → соответствие 6%" },
   { type: "arrow", text: "режим: готов к Этапу 0 — сборка v_01 «Контрольный каркас»" },
-  { type: "cmd", text: "ожидание команды_" },
+  { type: "pass", text: "шаг 1: EdgeExtension/ создан — manifest · background · content" },
+  { type: "pass", text: "шаг 1: reports/v_01/ + scripts/ на месте (BUILD · TEST · RESULT)" },
+  { type: "arrow", text: "статус: v_01 собран — ожидает ручной проверки в Edge" },
+  { type: "cmd", text: "ожидание RESULT.md_" },
 ];
 
 /* ---------- конфликт стека ---------- */
@@ -498,3 +509,6 @@ export const templateFiles = [
   "src/App.tsx",
   "src/index.css",
 ];
+
+/** Шаги чек-листа, уже выполненные самим процессом (артефакты созданы в шаге 1) */
+export const stepsPreChecked = ["s3", "s4"];

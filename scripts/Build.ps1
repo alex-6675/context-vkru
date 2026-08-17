@@ -1,39 +1,19 @@
-#Requires -Version 7.0
+# Build.ps1 — упаковка EdgeExtension/ в zip-артефакт сборки
+# Запуск: pwsh ./scripts/Build.ps1
+$ErrorActionPreference = "Stop"
 
-<#
-.SYNOPSIS
-    Сборка расширения «Context VK.RU» для Edge.
-.DESCRIPTION
-    Копирует исходные файлы из EdgeExtension/src/ в EdgeExtension/dist/,
-    выполняет базовую минификацию (если требуется) и подготавливает
-    папку для загрузки в режиме разработчика.
-#>
+$root = Split-Path -Parent $PSScriptRoot
+$src  = Join-Path $root "EdgeExtension"
+$out  = Join-Path $root "dist"
+$zip  = Join-Path $out "context-vkru_v_01.zip"
 
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-
-$ExtDir  = Join-Path $PSScriptRoot '..\EdgeExtension'
-$SrcDir  = Join-Path $ExtDir 'src'
-$DistDir = Join-Path $ExtDir 'dist'
-
-Write-Host "=== Сборка расширения «Context VK.RU» ===" -ForegroundColor Cyan
-
-# 1. Очистка dist
-if (Test-Path $DistDir) {
-    Remove-Item -Recurse -Force $DistDir
-    Write-Host "[OK] dist/ очищена" -ForegroundColor Green
+if (-not (Test-Path (Join-Path $src "manifest.json"))) {
+    Write-Error "manifest.json не найден в $src"
+    exit 1
 }
 
-# 1.1 Создание dist (если не существует)
-New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
+New-Item -ItemType Directory -Force -Path $out | Out-Null
+if (Test-Path $zip) { Remove-Item $zip -Force }
 
-# 2. Копирование содержимого src → dist (без вложенной папки src)
-Copy-Item "$SrcDir\*" $DistDir -Recurse
-Write-Host "[OK] содержимое src/ скопировано в dist/" -ForegroundColor Green
-
-# 3. Удаление ненужных файлов (если есть)
-$Exclude = @('*.map', '*.log')
-Get-ChildItem $DistDir -Recurse -Include $Exclude | Remove-Item -Force -ErrorAction SilentlyContinue
-
-Write-Host "=== Сборка завершена ===" -ForegroundColor Cyan
-Write-Host "Результат: $DistDir" -ForegroundColor Yellow
+Compress-Archive -Path (Join-Path $src "*") -DestinationPath $zip -Force
+Write-Host "OK: $zip"
