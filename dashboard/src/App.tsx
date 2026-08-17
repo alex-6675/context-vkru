@@ -254,7 +254,11 @@ export default function App() {
                       ))}
                     </div>
                     <p className="mt-2.5 text-[12.5px] leading-relaxed text-faint">
-                      В корень, загружаемый в Edge, не попадает ни одной npm-зависимости.
+                      В корень, загружаемый в Edge, не попадает ни одной npm-зависимости. Node нужен
+                      лишь для сборки этого рабочего листа:{" "}
+                      <span className="font-mono text-[11.5px] text-dim">Node 22 LTS</span>{" "}
+                      (Vite 6 принимает ^18 / ^20 / ≥22; фикс —{" "}
+                      <span className="font-mono text-[11.5px] text-dim">.nvmrc</span>).
                     </p>
                   </div>
                 </div>
