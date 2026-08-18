@@ -10,7 +10,7 @@ const TAG_CLS: Record<string, string> = {
 };
 
 export default function Roadmap() {
-  const [open, setOpen] = useState<string>("v_01");
+  const [open, setOpen] = useState<string>("v_02");
 
   return (
     <div className="relative">
@@ -19,7 +19,8 @@ export default function Roadmap() {
 
       <div className="space-y-2">
         {stages.map((s, i) => {
-          const isCurrent = s.v === "v_01";
+          const isCurrent = s.state === "current";
+          const isDone = s.state === "done";
           const isOpen = open === s.v;
           return (
             <Reveal key={s.v} delay={Math.min(i * 40, 240)}>
@@ -28,7 +29,7 @@ export default function Roadmap() {
                 <div className="hidden w-[88px] shrink-0 items-center justify-end pt-3 sm:flex">
                   <span
                     className={`font-mono text-[12px] font-bold tracking-wide ${
-                      isCurrent ? "text-steel" : "text-faint"
+                      isCurrent ? "text-steel" : isDone ? "text-pass" : "text-faint"
                     }`}
                   >
                     {s.v}
@@ -39,9 +40,11 @@ export default function Roadmap() {
                 <div className="relative z-10 flex shrink-0 pt-3.5">
                   <span
                     className={`stage-node h-[15px] w-[15px] rounded-full border-2 ${
-                      isCurrent
-                        ? "pulse-now border-steel bg-steel/30"
-                        : "border-line2 bg-panel"
+                      isDone
+                        ? "border-pass bg-pass"
+                        : isCurrent
+                          ? "pulse-now border-steel bg-steel/30"
+                          : "border-line2 bg-panel"
                     }`}
                   />
                 </div>
@@ -53,16 +56,24 @@ export default function Roadmap() {
                     isOpen
                       ? "border-steel/50 bg-panel2 shadow-[0_16px_44px_-20px_rgba(0,0,0,0.7)]"
                       : "border-line bg-panel/60 hover:border-line2 hover:bg-panel"
-                  }`}
+                  } ${isDone ? "border-l-2 border-l-pass/60" : ""}`}
                 >
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                    <span className="font-mono text-[11px] font-bold text-steel sm:hidden">
+                    <span
+                      className={`font-mono text-[11px] font-bold sm:hidden ${
+                        isDone ? "text-pass" : "text-steel"
+                      }`}
+                    >
                       {s.v}
                     </span>
                     <span className="font-mono text-[10.5px] uppercase tracking-widest text-faint">
                       Этап {s.num}
                     </span>
-                    <span className="font-display text-[14px] font-semibold text-ink transition-colors group-hover:text-steel">
+                    <span
+                      className={`font-display text-[14px] font-semibold transition-colors ${
+                        isDone ? "text-dim" : "text-ink group-hover:text-steel"
+                      }`}
+                    >
                       {s.title}
                     </span>
                     {s.tag && (
@@ -70,6 +81,11 @@ export default function Roadmap() {
                         className={`rounded-sm border px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider ${TAG_CLS[s.tag]}`}
                       >
                         {s.tag}
+                      </span>
+                    )}
+                    {isDone && (
+                      <span className="rounded-sm border border-pass/60 bg-pass/15 px-1.5 py-px font-mono text-[9.5px] font-bold uppercase tracking-wider text-pass">
+                        PASS · RESULT_v_01.md
                       </span>
                     )}
                     {isCurrent && (

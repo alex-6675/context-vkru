@@ -1,17 +1,17 @@
-/* Context VK.RU · v_01 · content.js
+/* Context VK.RU · v_02 · content.js
  * Точка входа Content Script.
  *
- * Этап 0 «Контрольный каркас»: единственный сигнал запуска на https://vk.ru/.
- * Обнаружение сущностей (adapters/vkru.js), MutationObserver и собственный
- * UI-слой появляются с v_03 (РЕГЛАМЕНТ_РАБОТ v2.0, часть 6).
+ * v_01: сигнал запуска на https://vk.ru/.
+ * v_02: диагностический канал — PING в background, логирование PONG и rtt.
  *
+ * CTX_BUILD / CTX_MSG приходят из core/messaging.js (манифест
+ * подключает его раньше этого файла).
  * Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2).
  */
 
 (() => {
   "use strict";
 
-  const BUILD = "v_01";
   const EXPECTED_HOST = "vk.ru";
 
   /* matches в манифесте уже ограничивают инъекцию, это контрольная проверка. */
@@ -19,9 +19,32 @@
     return;
   }
 
-  /* PASS-строка из reports/v_01/TEST.md:
-   * [CTX v_01] content script active on vk.ru */
   console.log(
-    `[CTX ${BUILD}] content script active on vk.ru — path: ${location.pathname}`
+    `[CTX ${CTX_BUILD}] content script active on vk.ru — path: ${location.pathname}`
   );
+
+  /* --- диагностический канал (v_02) --- */
+  const t0 = performance.now();
+  console.log(`[CTX ${CTX_BUILD}] PING sent to background`);
+
+  chrome.runtime
+    .sendMessage({
+      type: CTX_MSG.PING,
+      payload: { path: location.pathname, sentAt: Date.now() },
+    })
+    .then((reply) => {
+      if (reply && reply.type === CTX_MSG.PONG) {
+        const rtt = Math.round(performance.now() - t0);
+        console.log(
+          `[CTX ${CTX_BUILD}] PONG received from background (build ${reply.build}, rtt ~${rtt} ms)`
+        );
+      } else {
+        console.error(`[CTX ${CTX_BUILD}] unexpected reply:`, reply);
+      }
+    })
+    .catch((err) => {
+      console.error(
+        `[CTX ${CTX_BUILD}] PING failed — background недоступен: ${err && err.message ? err.message : err}`
+      );
+    });
 })();

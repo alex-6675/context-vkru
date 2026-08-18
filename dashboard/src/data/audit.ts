@@ -75,8 +75,9 @@ export const reqGroups: ReqGroup[] = [
         id: "messaging",
         req: "core/messaging.js — маршрутизация сообщений MV3",
         status: "fail",
-        note: "Отсутствует. Канал PING/PONG проверяется уже на этапе 1 (v_02).",
+        note: "Создан в v_02: CTX_MSG (PING/PONG), канал проверен вручную. Полная маршрутизация команд — с этапами 8–9.",
         doc: "architecture.md §D, РЕГЛАМЕНТ ч.6",
+        since: "v_02",
       },
       {
         id: "ui",
@@ -206,6 +207,7 @@ export interface Stage {
   goal: string;
   pass: string;
   tag?: "диагностика" | "адаптер" | "UI-слой" | "данные";
+  state?: "done" | "current";
 }
 
 export const stages: Stage[] = [
@@ -215,6 +217,7 @@ export const stages: Stage[] = [
     title: "Контрольный каркас",
     goal: "Минимальный MV3-манифест, загрузка распакованного расширения в Edge, запуск content.js на https://vk.ru/.",
     pass: "Расширение видимо в edge://extensions без ошибок; на vk.ru в консоли страницы появляется маркер запуска content.js.",
+    state: "done",
   },
   {
     v: "v_02",
@@ -222,6 +225,7 @@ export const stages: Stage[] = [
     title: "Диагностический канал",
     goal: "Обмен сообщениями PING/PONG между content.js и background.js (Service Worker) через chrome.runtime.",
     pass: "PING из content-скрипта достигает SW и возвращается PONG; оба события логируются.",
+    state: "current",
   },
   {
     v: "v_03",
@@ -289,7 +293,7 @@ export const stages: Stage[] = [
   {
     v: "v_11",
     num: 10,
-    title: "Сохранение",
+    title: "Сохранен��е",
     goal: "Запись EntityRecord в chrome.storage.local, ключ — нормализованный identity.url.",
     pass: "Запись переживает перезагрузку страницы и перезапуск браузера; маркер отрисовывается из хранилища.",
     tag: "данные",
@@ -402,8 +406,10 @@ export const termLines: TermLine[] = [
   { type: "arrow", text: "режим: готов к Этапу 0 — сборка v_01 «Контрольный каркас»" },
   { type: "pass", text: "шаг 1: EdgeExtension/ создан — manifest · background · content" },
   { type: "pass", text: "шаг 1: reports/v_01/ + scripts/ на месте (BUILD · TEST · RESULT)" },
-  { type: "arrow", text: "статус: v_01 собран — ожидает ручной проверки в Edge" },
-  { type: "cmd", text: "ожидание RESULT.md_" },
+  { type: "pass", text: "RESULT_v_01.md: PASS от Пользователя (18.08.2026) — v_01 закрыт" },
+  { type: "pass", text: "шаг 2: v_02 — core/messaging.js · PING/PONG · default_locale: ru" },
+  { type: "arrow", text: "статус: v_02 собран — ожидает ручной проверки в Edge" },
+  { type: "cmd", text: "ожидание RESULT_v_02.md_" },
 ];
 
 /* ---------- конфликт стека ---------- */
@@ -510,5 +516,7 @@ export const templateFiles = [
   "src/index.css",
 ];
 
-/** Шаги чек-листа, уже выполненные самим процессом (артефакты созданы в шаге 1) */
-export const stepsPreChecked = ["s3", "s4"];
+/** Шаги чек-листа, уже выполненные самим процессом:
+ *  s3/s4 — артефакты v_01 созданы в шаге 1;
+ *  s5/s6 — ручной прогон в Edge и RESULT_v_01.md: PASS (18.08.2026). */
+export const stepsPreChecked = ["s3", "s4", "s5", "s6"];

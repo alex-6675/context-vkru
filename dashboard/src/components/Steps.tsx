@@ -5,14 +5,15 @@ import Reveal from "./Reveal";
 const LS_KEY = "ctxvkru-start-steps-v1";
 
 function loadDone(): Record<string, boolean> {
+  /* предвыполненные шаги процесса — базовый слой */
+  const base = Object.fromEntries(stepsPreChecked.map((id) => [id, true]));
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw) as Record<string, boolean>;
+    if (raw) return { ...base, ...(JSON.parse(raw) as Record<string, boolean>) };
   } catch {
-    /* приватный режим — работаем с дефолтом */
+    /* приватный режим — работаем с базовым слоем */
   }
-  /* s3/s4 уже выполнены самим процессом: артефакты v_01 созданы в шаге 1 */
-  return Object.fromEntries(stepsPreChecked.map((id) => [id, true]));
+  return base;
 }
 
 export default function Steps() {

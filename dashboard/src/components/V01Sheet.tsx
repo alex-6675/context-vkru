@@ -1,5 +1,4 @@
 import { useState } from "react";
-import Reveal from "./Reveal";
 import {
   v01Files,
   v01Tree,
@@ -8,455 +7,332 @@ import {
   flowNodes,
   buildResultMd,
 } from "../data/v01";
+import CodeView from "./CodeView";
+import Reveal from "./Reveal";
 
 export type Verdict = "pass" | "fail" | null;
 
-/* ---------- подсветка листингов ---------- */
-
-function escapeHtml(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function highlight(code: string): string {
-  let html = escapeHtml(code);
-  // один проход: блочные/строчные комментарии и строки (без вложений)
-  html = html.replace(
-    /(\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:[^"\\\n]|\\.)*")/g,
-    (m) =>
-      m.startsWith('"')
-        ? `<span class="tok-str">${m}</span>`
-        : `<span class="tok-com">${m}</span>`,
-  );
-  html = html.replace(
-    /\b(const|let|var|return|if|else|new|function|of|in|typeof|await|async|this)\b/g,
-    '<span class="tok-kw">$1</span>',
-  );
-  html = html.replace(
-    /\b(true|false|null|undefined)\b/g,
-    '<span class="tok-lit">$1</span>',
-  );
-  html = html.replace(
-    /\b(chrome|console|location|document|window)\b/g,
-    '<span class="tok-obj">$1</span>',
-  );
-  html = html.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="tok-num">$1</span>');
-  return html;
-}
-
-/* ---------- копирование ---------- */
-
-function CopyBtn({ text }: { text: string }) {
-  const [state, setState] = useState<"idle" | "ok" | "err">("idle");
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setState("ok");
-    } catch {
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-        setState("ok");
-      } catch {
-        setState("err");
-      }
-    }
-    setTimeout(() => setState("idle"), 1800);
-  };
-
-  return (
-    <button
-      onClick={copy}
-      className={`flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-wider transition-all ${
-        state === "ok"
-          ? "border-pass/60 bg-pass/15 text-pass"
-          : state === "err"
-            ? "border-fail/60 bg-fail/15 text-fail"
-            : "border-line2 bg-panel2 text-dim hover:border-steel hover:text-ink"
-      }`}
-    >
-      {state === "ok" ? (
-        <>
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-            <path d="M2 6.2L4.8 9L10 3.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          скопировано
-        </>
-      ) : state === "err" ? (
-        "не удалось"
-      ) : (
-        <>
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-            <rect x="1.5" y="1.5" width="7" height="7" stroke="currentColor" strokeWidth="1.3" />
-            <path d="M4 10.5h6.5V4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-          </svg>
-          копировать
-        </>
-      )}
-    </button>
-  );
-}
-
-/* ---------- поток шага ---------- */
-
-type NodeState = "done" | "current" | "pending" | "pass" | "fail";
-
-function flowStates(verdict: Verdict): Record<string, NodeState> {
-  if (verdict === "pass")
-    return { create: "done", load: "done", check: "done", verdict: "pass", stop: "done" };
-  if (verdict === "fail")
-    return { create: "done", load: "done", check: "done", verdict: "fail", stop: "current" };
-  return { create: "done", load: "current", check: "pending", verdict: "pending", stop: "pending" };
-}
-
-function NodeDot({ st }: { st: NodeState }) {
-  if (st === "done" || st === "pass")
-    return (
-      <span className="flex h-6 w-6 items-center justify-center border border-pass/60 bg-pass/15">
-        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-          <path d="M2 6.2L4.8 9L10 3.4" stroke="var(--color-pass)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </span>
-    );
-  if (st === "fail")
-    return (
-      <span className="flex h-6 w-6 items-center justify-center border border-fail/60 bg-fail/15">
-        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-          <path d="M2.5 2.5l7 7m0-7l-7 7" stroke="var(--color-fail)" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      </span>
-    );
-  if (st === "current")
-    return (
-      <span className="pulse-now flex h-6 w-6 items-center justify-center border-2 border-steel bg-steel/20">
-        <span className="h-1.5 w-1.5 rounded-full bg-steel" />
-      </span>
-    );
-  return <span className="h-6 w-6 border border-line2 bg-panel" />;
-}
-
-/* ---------- рабочий лист ---------- */
+const FLOW_ICON: Record<string, JSX.Element> = {
+  create: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <path d="M2.5 13.5v-9h7l4 4v5h-11z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M9 4.5V8h3.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  ),
+  load: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="2.5" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5.5 14h5M8 11.5V14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  ),
+  check: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5.7 8.2L7.3 9.8L10.5 6.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  verdict: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  ),
+  stop: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="6" y="6" width="4" height="4" fill="currentColor" />
+    </svg>
+  ),
+};
 
 export default function V01Sheet({
   verdict,
   setVerdict,
+  locked = false,
 }: {
   verdict: Verdict;
   setVerdict: (v: Verdict) => void;
+  locked?: boolean;
 }) {
   const [tab, setTab] = useState(0);
+  const [copied, setCopied] = useState(false);
   const [note, setNote] = useState("");
-  const file = v01Files[tab];
-  const states = flowStates(verdict);
-  const lines = file.code.split("\n").length;
-  const bytes = new TextEncoder().encode(file.code).length;
 
-  const downloadResult = () => {
+  const copyTree = async () => {
+    try {
+      await navigator.clipboard.writeText(v01Tree);
+    } catch {
+      /* clipboard недоступен — тихо */
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  const download = () => {
     if (!verdict) return;
-    const blob = new Blob([buildResultMd(verdict, note.trim())], {
+    const blob = new Blob([buildResultMd(verdict, note)], {
       type: "text/markdown;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "RESULT_v_01.md";
-    document.body.appendChild(a);
+    a.download = "RESULT.md";
     a.click();
-    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
-        {/* левая колонка: поток + дерево пакета */}
+      <div className="grid gap-6 lg:grid-cols-[1.02fr_1fr]">
+        {/* левая колонка: поток + код */}
         <div className="space-y-6">
           <Reveal>
-            <div className="cornered border border-line bg-panel/80 p-5">
-              <div className="flex items-center justify-between">
-                <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
-                  Поток шага 1
-                </p>
-                <span
-                  className={`font-mono text-[10px] font-bold uppercase tracking-wider ${
-                    verdict === "pass"
-                      ? "text-pass"
-                      : verdict === "fail"
-                        ? "text-fail"
-                        : "text-warn"
-                  }`}
-                >
-                  {verdict === "pass"
-                    ? "PASS принят"
-                    : verdict === "fail"
-                      ? "FAIL · итерация"
-                      : "ждём Edge"}
-                </span>
-              </div>
-
-              <div className="relative mt-4">
-                <div className="absolute bottom-3 left-[11px] top-3 w-px bg-line" />
-                <div className="space-y-4">
-                  {flowNodes.map((n) => {
-                    const st = states[n.id];
-                    return (
-                      <div key={n.id} className="relative flex gap-3.5">
-                        <div className="relative z-10">
-                          <NodeDot st={st} />
-                        </div>
-                        <div className="pt-0.5">
+            <div className="border border-line bg-panel/70 p-5">
+              <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
+                Поток шага 1 (по регламенту, часть 6)
+              </p>
+              <div className="mt-4">
+                {flowNodes.map((n, i) => {
+                  const done = i < 4;
+                  const isStop = n.id === "stop";
+                  return (
+                    <div key={n.id}>
+                      <div className="flex items-center gap-4">
+                        <span
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center border ${
+                            done
+                              ? "border-pass/50 bg-pass/10 text-pass"
+                              : isStop
+                                ? "border-warn/50 bg-warn/10 text-warn"
+                                : "border-line2 bg-panel text-dim"
+                          }`}
+                        >
+                          {FLOW_ICON[n.id]}
+                        </span>
+                        <div className="min-w-0">
                           <p
-                            className={`text-[13px] font-semibold leading-snug ${
-                              st === "pending" ? "text-faint" : st === "fail" ? "text-fail" : "text-ink"
+                            className={`font-display text-[14px] font-semibold leading-tight ${
+                              done ? "text-ink" : "text-dim"
                             }`}
                           >
                             {n.label}
                           </p>
-                          <p className="mt-0.5 font-mono text-[10.5px] leading-relaxed text-faint">
+                          <p className="mt-0.5 font-mono text-[10.5px] leading-snug text-faint">
                             {n.sub}
                           </p>
                         </div>
+                        {done && !isStop && (
+                          <span className="ml-auto shrink-0 border border-pass/50 bg-pass/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider text-pass">
+                            сделано
+                          </span>
+                        )}
+                        {isStop && (
+                          <span className="blink-soft ml-auto shrink-0 border border-warn/50 bg-warn/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider text-warn">
+                            здесь
+                          </span>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                      {i < flowNodes.length - 1 && (
+                        <div className="ml-[17px] h-5 border-l border-dashed border-line2" />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </Reveal>
 
-          <Reveal delay={100}>
-            <div className="cornered border border-line bg-inset/80">
-              <p className="border-b border-line px-4 py-2.5 font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
-                Пакет v_01
-              </p>
-              <pre className="overflow-x-auto px-4 py-3.5 font-mono text-[11px] leading-[1.8] text-dim">
+          <Reveal delay={80}>
+            <div className="cornered border border-line bg-inset/90">
+              <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+                <span className="font-mono text-[11px] tracking-wider text-faint">
+                  пакет расширения · на диске
+                </span>
+                <button
+                  onClick={copyTree}
+                  className="filter-btn cursor-pointer border border-line bg-panel px-2.5 py-1 font-mono text-[10.5px] tracking-wide text-dim hover:border-steel hover:text-ink"
+                >
+                  {copied ? "✓ скопировано" : "копировать"}
+                </button>
+              </div>
+              <pre className="overflow-x-auto px-5 py-4 font-mono text-[12px] leading-[1.8] text-dim">
                 {v01Tree}
               </pre>
             </div>
           </Reveal>
+
+          <Reveal delay={120}>
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap gap-1 border-b border-line">
+                {v01Files.map((f, i) => (
+                  <button
+                    key={f.path}
+                    onClick={() => setTab(i)}
+                    className={`tab-btn relative cursor-pointer px-3.5 py-2 font-mono text-[11.5px] font-bold tracking-wide transition-colors ${
+                      i === tab ? "tab-active text-ink" : "text-faint hover:text-dim"
+                    }`}
+                  >
+                    {f.name}
+                  </button>
+                ))}
+              </div>
+              <CodeView
+                path={v01Files[tab].path}
+                note={v01Files[tab].note}
+                code={v01Files[tab].code}
+              />
+            </div>
+          </Reveal>
         </div>
 
-        {/* правая колонка: код */}
-        <Reveal delay={80}>
-          <div className="cornered flex h-full flex-col border border-line bg-inset/90">
-            {/* вкладки */}
-            <div className="flex flex-wrap items-center gap-1 border-b border-line px-3 pt-3">
-              {v01Files.map((f, i) => (
-                <button
-                  key={f.path}
-                  onClick={() => setTab(i)}
-                  className={`tab-btn relative cursor-pointer px-3.5 py-2 font-mono text-[11.5px] font-bold tracking-wide transition-colors ${
-                    i === tab ? "tab-active text-ink" : "text-faint hover:text-dim"
-                  }`}
-                >
-                  {f.name}
-                </button>
-              ))}
-              <div className="ml-auto hidden pb-1 sm:block">
-                <CopyBtn text={file.code} />
+        {/* правая колонка: загрузка + тест */}
+        <div className="space-y-6">
+          <Reveal delay={60}>
+            <div className="border border-line bg-panel/70 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-display text-[15px] font-semibold text-ink">
+                  Как собрать и загрузить
+                </h3>
+                <span className="border border-steel/40 bg-steel/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-steel">
+                  вручную
+                </span>
               </div>
+              <ol className="mt-4 space-y-4">
+                {loadSteps.map((s, i) => (
+                  <li key={s.t} className="flex gap-3.5">
+                    <span className="mt-px flex h-6 w-6 shrink-0 items-center justify-center border border-steel/50 bg-steel/10 font-mono text-[11px] font-bold text-steel">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="text-[13.5px] font-semibold leading-snug text-ink">{s.t}</p>
+                      <p className="mt-1 text-[12.5px] leading-relaxed text-dim">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </div>
+          </Reveal>
 
-            <div className="flex items-center justify-between gap-3 border-b border-line bg-panel/50 px-4 py-2">
-              <p className="truncate font-mono text-[10.5px] text-faint">{file.path}</p>
-              <p className="shrink-0 font-mono text-[10.5px] text-faint">
-                {lines} стр · {bytes} Б · Vanilla JS
+          <Reveal delay={120}>
+            <div className="border border-line bg-panel/70 p-5">
+              <h3 className="font-display text-[15px] font-semibold text-ink">
+                TEST · критерии (reports/v_01/TEST.md)
+              </h3>
+
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
+                Предусловия
               </p>
-            </div>
+              <ul className="mt-1.5 space-y-1.5">
+                {testBlock.pre.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-faint" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
 
-            {/* листинг */}
-            <div className="code-scroll flex-1 overflow-auto">
-              <div className="grid w-max min-w-full grid-cols-[auto_1fr]">
-                <pre className="select-none border-r border-line bg-panel/40 px-3 py-4 text-right font-mono text-[12px] leading-[1.75] text-[#3d4f63]">
-                  {file.code
-                    .split("\n")
-                    .map((_, i) => i + 1)
-                    .join("\n")}
-                </pre>
-                <pre
-                  className="px-4 py-4 font-mono text-[12px] leading-[1.75] text-dim"
-                  dangerouslySetInnerHTML={{ __html: highlight(file.code) }}
-                />
-              </div>
-            </div>
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-pass/80">
+                PASS — ожидается
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {testBlock.pass.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="mt-[5px] shrink-0">
+                      <path d="M2 6.2L4.8 9L10 3.4" stroke="var(--color-pass)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {p}
+                  </li>
+                ))}
+              </ul>
 
-            <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2.5">
-              <p className="font-mono text-[10.5px] text-steel">{file.note}</p>
-              <div className="sm:hidden">
-                <CopyBtn text={file.code} />
-              </div>
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-fail/80">
+                FAIL — признаки
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {testBlock.fail.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="mt-[5px] shrink-0">
+                      <path d="M2.5 2.5l7 7m0-7l-7 7" stroke="var(--color-fail)" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                    {p}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-        </Reveal>
-      </div>
+          </Reveal>
 
-      {/* загрузка + тест */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Reveal>
-          <div className="cornered h-full border border-line bg-panel/80 p-5 sm:p-6">
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
-              Как собрать и загрузить
-            </p>
-            <ol className="mt-4 space-y-4">
-              {loadSteps.map((s, i) => (
-                <li key={s.t} className="flex gap-3.5">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center border border-steel/50 bg-steel/10 font-mono text-[11px] font-bold text-steel">
-                    {i + 1}
-                  </span>
-                  <div>
-                    <p className="text-[13.5px] font-semibold leading-snug text-ink">{s.t}</p>
-                    <p className="mt-1 text-[12.5px] leading-relaxed text-dim">{s.d}</p>
+          <Reveal delay={160}>
+            <div className="border border-line bg-panel/70 p-5">
+              <h3 className="font-display text-[15px] font-semibold text-ink">
+                RESULT_v_01.md · фиксация вердикта
+              </h3>
+
+              {locked ? (
+                <div className="mt-4 border border-pass/40 bg-pass/[0.07] px-4 py-3.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="border border-pass/60 bg-pass/15 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-widest text-pass">
+                      PASS · зафиксирован
+                    </span>
+                    <span className="font-mono text-[11px] text-dim">
+                      reports/v_01/RESULT_v_01.md · 18.08.2026 · проверено Пользователем (§5.6)
+                    </span>
                   </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </Reveal>
-
-        <Reveal delay={100}>
-          <div className="cornered h-full border border-line bg-panel/80 p-5 sm:p-6">
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
-              TEST.md · критерии
-            </p>
-            <div className="mt-4 space-y-4">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-steel">
-                  Предусловия
-                </p>
-                <ul className="mt-2 space-y-1.5">
-                  {testBlock.pre.map((t) => (
-                    <li key={t} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
-                      <span className="mt-[7px] h-1 w-1 shrink-0 bg-steel" />
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-pass">
-                  PASS — всё из списка
-                </p>
-                <ul className="mt-2 space-y-1.5">
-                  {testBlock.pass.map((t) => (
-                    <li key={t} className="flex gap-2.5 font-mono text-[11.5px] leading-relaxed text-dim">
-                      <span className="mt-0.5 shrink-0 text-pass">+</span>
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-fail">
-                  FAIL — любой из признаков
-                </p>
-                <ul className="mt-2 space-y-1.5">
-                  {testBlock.fail.map((t) => (
-                    <li key={t} className="flex gap-2.5 font-mono text-[11.5px] leading-relaxed text-dim">
-                      <span className="mt-0.5 shrink-0 text-fail">−</span>
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-dim">
+                    Замечание из RESULT — отсутствие{" "}
+                    <span className="font-mono text-[11.5px] text-ink">default_locale: "ru"</span>{" "}
+                    в манифесте — закрыто в сборке v_02 (шаг 2).
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setVerdict(verdict === "pass" ? null : "pass")}
+                      className={`verdict-btn cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                        verdict === "pass"
+                          ? "border-pass bg-pass/15 text-pass shadow-[0_0_24px_-6px_rgba(56,180,126,0.5)]"
+                          : "border-line bg-panel text-dim hover:border-pass/60 hover:text-pass"
+                      }`}
+                    >
+                      PASS
+                    </button>
+                    <button
+                      onClick={() => setVerdict(verdict === "fail" ? null : "fail")}
+                      className={`verdict-btn cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                        verdict === "fail"
+                          ? "border-fail bg-fail/15 text-fail shadow-[0_0_24px_-6px_rgba(224,90,82,0.5)]"
+                          : "border-line bg-panel text-dim hover:border-fail/60 hover:text-fail"
+                      }`}
+                    >
+                      FAIL
+                    </button>
+                  </div>
+                  <p className="mt-2.5 text-[11.5px] leading-relaxed text-faint">
+                    Вердикт сохраняется локально и управляет сводкой. По регламенту статус
+                    устанавливает только Пользователь (§5.6).
+                  </p>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Комментарий к RESULT.md (ошибка, наблюдения)…"
+                    className="mt-3 h-20 w-full resize-none border border-line bg-inset px-3 py-2.5 font-mono text-[12px] text-ink placeholder:text-faint focus:border-steel focus:outline-none"
+                  />
+                  <button
+                    onClick={download}
+                    disabled={!verdict}
+                    className={`mt-3 w-full cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                      verdict
+                        ? "border-steel/70 bg-steel/15 text-ink hover:bg-steel/25"
+                        : "cursor-not-allowed border-line bg-panel text-faint"
+                    }`}
+                  >
+                    Скачать RESULT.md
+                  </button>
+                </>
+              )}
             </div>
-          </div>
-        </Reveal>
-      </div>
-
-      {/* рекордер RESULT */}
-      <Reveal>
-        <div
-          className={`cornered border p-5 transition-colors duration-500 sm:p-6 ${
-            verdict === "pass"
-              ? "border-pass/50 bg-pass/[0.06]"
-              : verdict === "fail"
-                ? "border-fail/50 bg-fail/[0.06]"
-                : "border-line bg-panel/80"
-          }`}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
-              RESULT.md · вердикт Пользователя (§5.6)
-            </p>
-            <p className="font-mono text-[10.5px] text-faint">
-              LLM статус не присваивает — выбор за вами
-            </p>
-          </div>
-
-          {verdict === null ? (
-            <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_auto]">
-              <div>
-                <p className="max-w-2xl text-[14px] leading-relaxed text-dim">
-                  Сборка на месте. Загрузите её в Edge по инструкции выше, сверьте строки в
-                  консолях — и зафиксируйте результат. Без RESULT.md переход к{" "}
-                  <span className="font-mono text-[12.5px] text-steel">v_02 «Диагностический канал»</span>{" "}
-                  запрещён (§4).
-                </p>
-                <input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Комментарий к RESULT.md (необязательно): наблюдения, логи, версии…"
-                  className="mt-4 w-full border border-line bg-inset px-4 py-2.5 font-mono text-[12px] text-ink outline-none transition-colors placeholder:text-faint focus:border-steel"
-                />
-              </div>
-              <div className="flex flex-row gap-3 lg:flex-col lg:justify-center">
-                <button
-                  onClick={() => setVerdict("pass")}
-                  className="verdict-btn flex-1 cursor-pointer border border-pass/60 bg-pass/10 px-8 py-3.5 font-mono text-[13px] font-bold uppercase tracking-[0.18em] text-pass transition-all hover:bg-pass/20 hover:shadow-[0_0_32px_-8px_var(--color-pass)] active:translate-y-px lg:flex-none"
-                >
-                  PASS
-                </button>
-                <button
-                  onClick={() => setVerdict("fail")}
-                  className="verdict-btn flex-1 cursor-pointer border border-fail/60 bg-fail/10 px-8 py-3.5 font-mono text-[13px] font-bold uppercase tracking-[0.18em] text-fail transition-all hover:bg-fail/20 hover:shadow-[0_0_32px_-8px_var(--color-fail)] active:translate-y-px lg:flex-none"
-                >
-                  FAIL
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="max-w-2xl">
-                <p
-                  className={`font-display text-xl font-extrabold tracking-tight ${
-                    verdict === "pass" ? "text-pass" : "text-fail"
-                  }`}
-                >
-                  {verdict === "pass" ? "PASS · v_01 принят" : "FAIL · остаёмся в v_01"}
-                </p>
-                <p className="mt-2 text-[13.5px] leading-relaxed text-dim">
-                  {verdict === "pass"
-                    ? "Контрольный каркас подтверждён вручную. Следующий модуль — M-02 / v_02: обмен PING/PONG между content.js и background.js. Запросите задание — соберу по шаблону §7, со своей стороны ничего не начинаю."
-                    : "Перескакивать запрещено (§5.1): сравните признаки FAIL с логом Service Worker и консолью страницы, опишите причину — и повторите тест в пределах v_01."}
-                </p>
-                <button
-                  onClick={() => setVerdict(null)}
-                  className="mt-3 cursor-pointer font-mono text-[10.5px] uppercase tracking-wider text-faint underline decoration-line underline-offset-4 transition-colors hover:text-dim"
-                >
-                  сбросить вердикт
-                </button>
-              </div>
-              <div className="flex shrink-0 flex-col items-stretch gap-2">
-                <button
-                  onClick={downloadResult}
-                  className="cursor-pointer border border-steel/60 bg-steel/10 px-5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-wider text-steel transition-all hover:bg-steel/20 active:translate-y-px"
-                >
-                  ↓ Скачать RESULT.md
-                </button>
-                <p className="text-center font-mono text-[9.5px] text-faint">
-                  → в reports/v_01/
-                </p>
-              </div>
-            </div>
-          )}
+          </Reveal>
         </div>
-      </Reveal>
+      </div>
     </div>
   );
 }

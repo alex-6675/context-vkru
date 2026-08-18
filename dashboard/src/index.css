@@ -294,6 +294,43 @@ body {
   outline-offset: 3px;
 }
 
+/* ---------- sequence PING/PONG ---------- */
+@keyframes dash-flow {
+  to {
+    background-position-x: 22px;
+  }
+}
+.ping-flow,
+.pong-flow {
+  background-image: repeating-linear-gradient(
+    90deg,
+    currentColor 0 8px,
+    transparent 8px 14px
+  );
+  animation: dash-flow 0.9s linear infinite;
+}
+.ping-flow {
+  color: var(--color-steel);
+}
+.pong-flow {
+  color: var(--color-pass);
+  animation-direction: reverse;
+}
+.arrow-right {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 9px solid var(--color-steel);
+}
+.arrow-left {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 9px solid var(--color-pass);
+}
+
 /* ---------- мигание статуса ---------- */
 @keyframes soft-blink {
   0%,
