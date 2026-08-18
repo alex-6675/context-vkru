@@ -5,7 +5,7 @@
 # ============================================================================
 
 # Проверка версии PowerShell
-$requiredPSVersion = [version]'7.6.4'
+$requiredPSVersion = [version]'7.6.5'
 if ($PSVersionTable.PSVersion -lt $requiredPSVersion) {
     Write-Error "Требуется PowerShell версии $requiredPSVersion или выше"
     exit 1

@@ -4,7 +4,7 @@
 
 # --- Сборка и артефакты ---
 AGENTS.md
-EdgeExtension/dist/
+dist/
 
 # --- Локальные данные AI-ассистентов ---
 .codeassistant/
@@ -22,7 +22,9 @@ desktop.ini
 *.xpi
 *.nex
 
-# --- Node.js (на будущее) ---
+# --- Node.js ---
 node_modules/
 package-lock.json
 yarn.lock
+dashboard/node_modules/
+
