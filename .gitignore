@@ -26,5 +26,5 @@ desktop.ini
 node_modules/
 package-lock.json
 yarn.lock
-dashboard/node_modules/
 
+scripts\run-edge-vk-test.ps1
