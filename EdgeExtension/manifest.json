@@ -3,6 +3,7 @@
   "name": "Context VK.RU",
   "version": "0.0.1",
   "description": "Точечные заметки и маркеры для сущностей vk.ru. Собственный UI-слой поверх портала, без вмешательства в его логику.",
+  "default_locale": "ru",
   "background": {
     "service_worker": "src/background.js"
   },
