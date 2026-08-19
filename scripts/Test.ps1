@@ -1,27 +1,10 @@
-# Test.ps1 — статическая проверка состава сборки v_01
-# (фактический PASS/FAIL — только вручную в Edge, см. reports/v_01/TEST.md, §5.6)
-$ErrorActionPreference = "Stop"
+# Test.ps1 — ЗАГЛУШКА.
+# НЕ ПРАВИТЬ. Файл избыточен на текущем этапе.
+# Фактический PASS/FAIL устанавливается только Пользователем вручную в Edge
+# (§5.6, reports/v_XX/TEST.md). Скриптового теста нет и не требуется.
+# Оставлен как технический заглушечный артефакт для совместимости со структурой §L.
 
-$root = Split-Path -Parent $PSScriptRoot
-$required = @(
-    "EdgeExtension\manifest.json",
-    "EdgeExtension\src\background.js",
-    "EdgeExtension\src\content.js",
-    "reports\v_01\BUILD.md",
-    "reports\v_01\TEST.md",
-    "reports\v_01\RESULT.md"
-)
+$ErrorActionPreference = 'Stop'
 
-$failed = 0
-foreach ($f in $required) {
-    $p = Join-Path $root $f
-    if (Test-Path $p) {
-        Write-Host "  [PASS] $f"
-    } else {
-        Write-Host "  [FAIL] $f — отсутствует"
-        $failed++
-    }
-}
-
-if ($failed -gt 0) { Write-Error "Отсутствует файлов: $failed"; exit 1 }
-Write-Host "OK: состав v_01 полный. Далее — ручная проверка в Edge."
+Write-Host "Test.ps1: заглушка — скриптового теста нет."
+Write-Host "PASS/FAIL определяется только Пользователем вручную в Edge (§5.6). Этот файл не должен изменяться."

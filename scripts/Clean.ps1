@@ -1,13 +1,9 @@
-# Clean.ps1 — очистка артефактов сборки (dist/)
-# Запуск: pwsh ./scripts/Clean.ps1
-$ErrorActionPreference = "Stop"
+# Clean.ps1 — ЗАГЛУШКА.
+# НЕ ПРАВИТЬ. Файл не требуется: отдельной процедуры очистки нет.
+# Очистка выполняется автоматически внутри Build.ps1 (удаление dist/ перед сборкой).
+# Оставлен как технический заглушечный артефакт для совместимости со структурой §L.
 
-$root = Split-Path -Parent $PSScriptRoot
-$out  = Join-Path $root "dist"
+$ErrorActionPreference = 'Stop'
 
-if (Test-Path $out) {
-    Remove-Item $out -Recurse -Force
-    Write-Host "OK: dist/ удалён"
-} else {
-    Write-Host "OK: dist/ отсутствует, чистить нечего"
-}
+Write-Host "Clean.ps1: заглушка — ничего не делает."
+Write-Host "Очистка dist/ выполняется внутри Build.ps1. Этот файл не должен изменяться."
