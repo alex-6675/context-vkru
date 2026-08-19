@@ -85,7 +85,7 @@ export default function Roadmap() {
                     )}
                     {isDone && (
                       <span className="rounded-sm border border-pass/60 bg-pass/15 px-1.5 py-px font-mono text-[9.5px] font-bold uppercase tracking-wider text-pass">
-                        PASS · RESULT_v_01.md
+                        PASS · RESULT_{s.v}.md
                       </span>
                     )}
                     {isCurrent && (

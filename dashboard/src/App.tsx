@@ -1,4 +1,3 @@
-import { useState } from "react";
 import Reveal from "./components/Reveal";
 import Terminal from "./components/Terminal";
 import ScoreRing from "./components/ScoreRing";
@@ -21,8 +20,6 @@ const DOC_ARCH =
   "https://github.com/alex-6675/context-vkru/blob/main/docs/architecture.md";
 const DOC_REG =
   "https://github.com/alex-6675/context-vkru/blob/main/docs/%D0%A0%D0%95%D0%93%D0%9B%D0%90%D0%9C%D0%95%D0%9D%D0%A2_%D0%A0%D0%90%D0%91%D0%9E%D0%A2_v2_0.md";
-
-const VERDICT_KEY = "ctxvkru-verdict-v02";
 
 const extensionFiles = [
   "EdgeExtension/manifest.json",
@@ -86,25 +83,10 @@ function SectionHead({
 /* ---------- приложение ---------- */
 
 export default function App() {
-  const [verdict, setVerdictState] = useState<Verdict>(() => {
-    try {
-      const raw = localStorage.getItem(VERDICT_KEY);
-      if (raw === "pass" || raw === "fail") return raw;
-    } catch {
-      /* приватный режим */
-    }
-    return null;
-  });
-
-  const setVerdict = (v: Verdict) => {
-    setVerdictState(v);
-    try {
-      if (v) localStorage.setItem(VERDICT_KEY, v);
-      else localStorage.removeItem(VERDICT_KEY);
-    } catch {
-      /* приватный режим */
-    }
-  };
+  /* RESULT_v_02.md в репо (ветка main-qwen_v_02): PASS от Пользователя, 19.08.2026.
+     Вердикт зафиксирован официально — рабочий лист шага 2 закрыт, как и шаг 1. */
+  const verdict: Verdict = "pass";
+  const setVerdict: (v: Verdict) => void = () => undefined;
 
   const statusChip =
     verdict === "pass"
@@ -170,28 +152,22 @@ export default function App() {
             <div>
               <Reveal>
                 <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-steel">
-                  Шаг 2 / v_02 · диагностический канал PING/PONG
+                  Итоги шага 2 приняты · ветка main-qwen_v_02
                 </p>
                 <h1 className="mt-4 font-display text-[clamp(1.9rem,4.6vw,3.3rem)] font-extrabold leading-[1.08] tracking-tight text-ink">
-                  <span className="text-pass">v_01 — PASS.</span>
+                  <span className="text-pass">v_02 — PASS.</span>
                   <br />
-                  <span className={verdict === "pass" ? "text-pass" : verdict === "fail" ? "text-fail" : "text-steel"}>
-                    {verdict === "pass"
-                      ? "v_02 принят — курс на v_03."
-                      : verdict === "fail"
-                        ? "FAIL — итерация внутри v_02."
-                        : "Проверяем канал связи."}
-                  </span>
+                  <span className="text-pass">Этап 1 закрыт.</span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-dim">
-                  <span className="font-mono text-[13px] text-pass">RESULT_v_01.md</span> зафиксировал
-                  PASS от Пользователя (18.08.2026) — по §4 открыт следующий модуль. Собран{" "}
-                  <span className="font-mono text-[13px] text-ink">v_02 «Диагностический канал»</span>:
-                  общий модуль <span className="font-mono text-[13px] text-ink">core/messaging.js</span>,
-                  обмен <span className="font-mono text-[12.5px] text-steel">ctx:ping ⇄ ctx:pong</span>{" "}
-                  между content.js и Service Worker. Замечание из RESULT_v_01 — отсутствие{" "}
-                  <span className="font-mono text-[12.5px] text-ink">default_locale: "ru"</span> — закрыто:
-                  локаль подключена через <span className="font-mono text-[12.5px] text-ink">_locales/ru/messages.json</span>.
+                  <span className="font-mono text-[13px] text-pass">RESULT_v_02.md</span> в репо:
+                  PASS от Пользователя (19.08.2026, «tested OK via tester-tool») — все пять критериев:
+                  версия 0.0.2 без ошибок, PING/PONG в консоли Service Worker, тройка строк на странице
+                  vk.ru, повтор после F5, локаль из замечания v_01. Диагностический канал{" "}
+                  <span className="font-mono text-[12.5px] text-steel">ctx:ping ⇄ ctx:pong</span> между
+                  content.js и Service Worker подтверждён вручную. По §4 переход к Этапу 2 разрешён —
+                  но по AGENTS.md следующее задание (v_03) и решения по адаптеру приходят от
+                  проектировщика; до этого — СТОП.
                 </p>
               </Reveal>
 
@@ -210,13 +186,13 @@ export default function App() {
                     }`}
                   >
                     {verdict === "pass"
-                      ? "v_02 · PASS зафиксирован"
+                      ? "v_02 · PASS (19.08.2026)"
                       : verdict === "fail"
                         ? "v_02 · FAIL зафиксирован"
                         : "v_02 · вердикт ожидается"}
                   </span>
                   <span className="border border-steel/50 bg-steel/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-steel">
-                    {verdict === "pass" ? "далее: v_03 адаптер" : "пакет: 0.0.2 · vanilla js"}
+                    {verdict === "pass" ? "по плану: этап 2 · v_03 — ждём задание" : "пакет: 0.0.2 · vanilla js"}
                   </span>
                 </div>
               </Reveal>
@@ -317,7 +293,7 @@ export default function App() {
                   Один модуль → одна сборка → один результат
                 </p>
                 <p className="mt-1.5 text-[12px] leading-snug text-dim">
-                  v_01 → PASS (§4): переход разрешён. v_02 — ждёт RESULT_v_02.md от Пользователя
+                  v_01 → PASS · v_02 → PASS (§4). Переход к Этапу 2 разрешён; по AGENTS.md — ждём задание
                 </p>
               </div>
             </div>
@@ -328,10 +304,10 @@ export default function App() {
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
             num="01"
-            title="Шаг 2 · v_02 — диагностический канал"
-            sub="Рабочий лист текущей сборки: схема PING/PONG, изменения пакета (дословные листинги), инструкция обновления расширения в Edge и критерии TEST.md. Вердикт фиксируете вы — он сохраняется локально и управляет сводкой."
+            title="Шаг 2 · v_02 — диагностический канал · закрыт"
+            sub="Рабочий лист сборки v_02: схема PING/PONG, изменения пакета (дословные листинги), инструкция обновления расширения в Edge и критерии TEST.md. Закрыт вердиктом PASS (RESULT_v_02.md в ветке main-qwen_v_02, 19.08.2026)."
           />
-          <V02Sheet verdict={verdict} setVerdict={setVerdict} />
+          <V02Sheet verdict="pass" setVerdict={setVerdict} locked />
         </section>
 
         {/* 02 — шаг 1 / v_01 (закрыт) */}
@@ -349,7 +325,7 @@ export default function App() {
           <SectionHead
             num="03"
             title="Дорожная карта v_01 — v_15"
-            sub="Часть 6 регламента: строго последовательно, один модуль — одна тестовая сборка. v_01 отмечен зелёным (PASS подтверждён), v_02 пульсирует как текущая работа; клик раскрывает цель и PASS-критерий."
+            sub="Часть 6 регламента: строго последовательно, один модуль — одна тестовая сборка. v_01 и v_02 отмечены зелёным (PASS подтверждены), v_03 пульсирует как следующая работа по плану; клик раскрывает цель и PASS-критерий."
           />
           <Roadmap />
         </section>
@@ -417,7 +393,7 @@ export default function App() {
                   Как было · package.json
                 </p>
                 <h3 className="mt-1.5 font-display text-[16px] font-bold text-ink">
-                  Vite-шаблон с фреймворкам��
+                  Vite-шаблон с фреймворками
                 </h3>
                 <ul className="mt-4 space-y-2.5">
                   {stackLocal.map((s) => (
@@ -471,7 +447,7 @@ export default function App() {
                   </p>
                   <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-dim">
                     {verdict === "pass"
-                      ? "RESULT_v_02.md зафиксирован: v_02 = PASS. Следующая итерация — M-03 / v_03 «VK.RU Adapter: обнаружение»: до кода адаптера будет выдан диагностический snippet для консоли DevTools vk.ru (§5.7). Запросите — соберу по шаблону §7."
+                      ? "RESULT_v_02.md принят: v_02 = PASS (19.08.2026). По плану (§6) впереди Этап 2 / v_03 «VK.RU Adapter: обнаружение». По AGENTS.md не начинаю его по собственной инициативе: решения — как идентифицировать сущности vk.ru, какие селекторы использовать, нужен ли MutationObserver — должны прийти в задании от проектировщика."
                       : verdict === "fail"
                         ? "v_02 = FAIL: остаёмся внутри этапа (§5.1). Опишите причину в RESULT_v_02.md, исправьте пакет и повторите тест — переход к v_03 запрещён."
                         : "Ожидание RESULT_v_02.md от Пользователя: обновите расширение (↻), сверьте строки PING/PONG из TEST.md и зафиксируйте вердикт в рабочем листе шага 2. Статус устанавливает только человек (§5.6)."}
@@ -485,7 +461,7 @@ export default function App() {
                     docs/РЕГЛАМЕНТ_РАБОТ_v2_0.md <IconExt />
                   </a>
                   <span className="mt-1 text-line2">—</span>
-                  <span>v_01 PASS (18.08.2026) · v_02: {verdict ? verdict.toUpperCase() : "ОЖИДАНИЕ"}</span>
+                  <span>v_01 PASS (18.08.2026) · v_02 PASS (19.08.2026)</span>
                 </div>
               </div>
             </Reveal>

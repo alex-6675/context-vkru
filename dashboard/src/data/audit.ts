@@ -225,7 +225,7 @@ export const stages: Stage[] = [
     title: "Диагностический канал",
     goal: "Обмен сообщениями PING/PONG между content.js и background.js (Service Worker) через chrome.runtime.",
     pass: "PING из content-скрипта достигает SW и возвращается PONG; оба события логируются.",
-    state: "current",
+    state: "done",
   },
   {
     v: "v_03",
@@ -234,6 +234,7 @@ export const stages: Stage[] = [
     goal: "Поиск sourceElement в DOM. Обязательно сопровождается snippet'ом для консоли DevTools — проверка гипотез на живой странице.",
     pass: "Пользователь подтвердил вывод диагностики; адаптер находит контейнер сущности по семантическим признакам (href, role, data-*).",
     tag: "диагностика",
+    state: "current",
   },
   {
     v: "v_04",
@@ -293,7 +294,7 @@ export const stages: Stage[] = [
   {
     v: "v_11",
     num: 10,
-    title: "Сохранен��е",
+    title: "Сохранение",
     goal: "Запись EntityRecord в chrome.storage.local, ключ — нормализованный identity.url.",
     pass: "Запись переживает перезагрузку страницы и перезапуск браузера; маркер отрисовывается из хранилища.",
     tag: "данные",
@@ -408,8 +409,9 @@ export const termLines: TermLine[] = [
   { type: "pass", text: "шаг 1: reports/v_01/ + scripts/ на месте (BUILD · TEST · RESULT)" },
   { type: "pass", text: "RESULT_v_01.md: PASS от Пользователя (18.08.2026) — v_01 закрыт" },
   { type: "pass", text: "шаг 2: v_02 — core/messaging.js · PING/PONG · default_locale: ru" },
-  { type: "arrow", text: "статус: v_02 собран — ожидает ручной проверки в Edge" },
-  { type: "cmd", text: "ожидание RESULT_v_02.md_" },
+  { type: "pass", text: "RESULT_v_02.md: PASS от Пользователя (19.08.2026) — v_02 закрыт" },
+  { type: "arrow", text: "итог: 2 сборки подтверждены (v_01, v_02) · курс — Этап 2 / v_03" },
+  { type: "cmd", text: "ожидание задания на v_03 (AGENTS.md)_" },
 ];
 
 /* ---------- конфликт стека ---------- */

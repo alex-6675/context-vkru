@@ -68,9 +68,11 @@ function SequenceDiagram() {
 export default function V02Sheet({
   verdict,
   setVerdict,
+  locked = false,
 }: {
   verdict: Verdict;
   setVerdict: (v: Verdict) => void;
+  locked?: boolean;
 }) {
   const [tab, setTab] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -250,6 +252,25 @@ export default function V02Sheet({
               <h3 className="font-display text-[15px] font-semibold text-ink">
                 RESULT_v_02.md · фиксация вердикта
               </h3>
+
+              {locked ? (
+                <div className="mt-4 border border-pass/40 bg-pass/[0.07] px-4 py-3.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="border border-pass/60 bg-pass/15 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-widest text-pass">
+                      PASS · зафиксирован
+                    </span>
+                    <span className="font-mono text-[11px] text-dim">
+                      reports/v_02/RESULT_v_02.md · 19.08.2026 · ветка main-qwen_v_02 · «tested OK via tester-tool»
+                    </span>
+                  </div>
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-dim">
+                    Все пять критериев отмечены: версия 0.0.2 без ошибок, PING/PONG в SW-консоли,
+                    тройка строк на vk.ru, повтор после F5, локаль ru. По плану (§6) следующий — Этап 2 /
+                    v_03; по AGENTS.md ждём явного задания от проектировщика.
+                  </p>
+                </div>
+              ) : (
+                <>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setVerdict(verdict === "pass" ? null : "pass")}
@@ -293,6 +314,8 @@ export default function V02Sheet({
               >
                 Скачать RESULT_v_02.md
               </button>
+                </>
+              )}
             </div>
           </Reveal>
         </div>
