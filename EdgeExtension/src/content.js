@@ -1,6 +1,7 @@
-/* Context VK.RU · v_03 · content.js
+/* Context VK.RU · v_03f · content.js
  * v_01: сигнал запуска. v_02: PING/PONG (регрессия).
  * v_03: скан + debounced MutationObserver (600 мс) + дедупликация + отчёт.
+ * v_03f: + coverage-лог (самодиагностика селекторов posts/dates/roots).
  * Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2).
  */
 (() => {
@@ -19,6 +20,21 @@
   /* v_03: обнаружение */
   const seen = new Set();
   let timer = 0;
+
+  /* v_03f: coverage-лог. Выводится при изменении счётчиков.
+     M>0 на странице с комментариями = comment-ветка жива (селекторы целы). */
+  let lastCov = null;
+  function logCoverage() {
+    if (!globalThis.CTX_VKRU) return;
+    const cov = CTX_VKRU.coverage(document);
+    if (!lastCov ||
+        cov.posts !== lastCov.posts ||
+        cov.dates !== lastCov.dates ||
+        cov.roots !== lastCov.roots) {
+      lastCov = cov;
+      console.log(`[CTX ${CTX_BUILD}] coverage posts/dates/roots = ${cov.posts}/${cov.dates}/${cov.roots}`);
+    }
+  }
 
   function keyOf(e) {
     if (e.kind === "COMMENT")
@@ -48,6 +64,7 @@
       const k = keyOf(it.entity);
       if (!seen.has(k)) { seen.add(k); fresh.push(it); }
     });
+    logCoverage();
     report(fresh);
   }
 

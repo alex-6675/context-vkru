@@ -1,10 +1,20 @@
-/* Context VK.RU · adapters/vkru.js · v_03 — обнаружение. Vanilla JS. */
+/* Context VK.RU · adapters/vkru.js · v_03f — обнаружение (fix после FAIL v_03).
+ * Селекторы с подчёркиваниями в raw-написании (markdown-рендер их не трогает —
+ * файл передаётся исходником). Vanilla JS. */
 (function () {
   "use strict";
 
   const COMMENT_ROOT_SEL =
     '[data-testid="wallcomments_comment_root"],' +
     '[data-testid="wallcomments_comment_in_thread"]';
+
+  const SEL_DATE = 'a[data-testid="wall_comment_date"]';
+  const SEL_POST = '[data-testid="post"]';
+  const SEL_POST_HEADER = '[data-testid="post-header"]';
+  const SEL_POST_HEADER_TITLE = '[data-testid="post-header-title"]';
+  const SEL_POSTDATE = '[data-testid="postdateblock_preview"]';
+  const SEL_COMMENT_OWNER = '[data-testid="comment-owner"]';
+  const SEL_COMMENT_TEXT = '[data-testid="comment-text"]';
 
   const RE_PERSON = /^\/id(\d+)$/;
   const RE_CLUB = /^\/club(\d+)$/;
@@ -46,8 +56,8 @@
   function extractComment(dateAnchor) {
     const root = dateAnchor.closest(COMMENT_ROOT_SEL);
     if (!root) return null;
-    const ownerA = anchorOf(root.querySelector('[data-testid="comment-owner"]'));
-    const textEl = root.querySelector('[data-testid="comment-text"]');
+    const ownerA = anchorOf(root.querySelector(SEL_COMMENT_OWNER));
+    const textEl = root.querySelector(SEL_COMMENT_TEXT);
     const authorHref = ownerA ? normalizeHref(ownerA.getAttribute("href")) : "";
     const cls = authorHref
       ? classify(new URL(authorHref, "https://vk.ru").pathname)
@@ -76,14 +86,14 @@
   }
 
   function extractPost(postRoot) {
-    const header = postRoot.querySelector('[data-testid="post-header"]');
+    const header = postRoot.querySelector(SEL_POST_HEADER);
     const ownerA =
-      anchorOf(header ? header.querySelector('[data-testid="post-header-title"]') : null) ||
+      anchorOf(header ? header.querySelector(SEL_POST_HEADER_TITLE) : null) ||
       (header ? header.querySelector('a[href^="/id"], a[href^="/club"]') : null);
     if (!ownerA) return null;
     const authorHref = normalizeHref(ownerA.getAttribute("href"));
     const cls = classify(new URL(authorHref, "https://vk.ru").pathname);
-    const dateA = anchorOf(postRoot.querySelector('[data-testid="postdateblock_preview"]'));
+    const dateA = anchorOf(postRoot.querySelector(SEL_POSTDATE));
     let postUrl = "";
     if (dateA) {
       const wm = normalizeHref(dateA.getAttribute("href")).match(RE_WALL);
@@ -105,13 +115,29 @@
 
   function scan(doc) {
     const out = [];
-    Array.from(doc.querySelectorAll('a[data-testid="wall_comment_date"]'))
+    Array.from(doc.querySelectorAll(SEL_DATE))
       .forEach((d) => { const e = extractComment(d); if (e) out.push(e); });
-    Array.from(doc.querySelectorAll('[data-testid="post"]'))
+    Array.from(doc.querySelectorAll(SEL_POST))
       .forEach((p) => { const e = extractPost(p); if (e) out.push(e); });
     return out;
   }
 
-  globalThis.CTX_VKRU = Object.freeze(
-    { scan: scan, normalizeHref: normalizeHref, classify: classify });
+  /* Самодиагностика покрытия селекторов (M-03-fix):
+   * posts — кол-во [data-testid="post"];
+   * dates — кол-во a[data-testid="wall_comment_date"] (M>0 = comment-ветка жива);
+   * roots — кол-во элементов COMMENT_ROOT_SEL. */
+  function coverage(doc) {
+    return {
+      posts: doc.querySelectorAll(SEL_POST).length,
+      dates: doc.querySelectorAll(SEL_DATE).length,
+      roots: doc.querySelectorAll(COMMENT_ROOT_SEL).length,
+    };
+  }
+
+  globalThis.CTX_VKRU = Object.freeze({
+    scan: scan,
+    coverage: coverage,
+    normalizeHref: normalizeHref,
+    classify: classify,
+  });
 })();
