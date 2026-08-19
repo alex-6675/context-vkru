@@ -10,7 +10,7 @@ const TAG_CLS: Record<string, string> = {
 };
 
 export default function Roadmap() {
-  const [open, setOpen] = useState<string>("v_02");
+  const [open, setOpen] = useState<string>("v_03");
 
   return (
     <div className="relative">

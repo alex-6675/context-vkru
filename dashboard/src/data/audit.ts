@@ -45,7 +45,7 @@ export const reqGroups: ReqGroup[] = [
         id: "background",
         req: "background.js — Service Worker (contextMenus, storage, маршрутизация)",
         status: "fail",
-        note: "В v_01 создана заглушка (жизненный цикл SW). Полная ответственность — contextMenus, storage, маршрутизация — по плану с v_02/v_10.",
+        note: "v_01: жизненный цикл. v_02: PING→PONG. v_03: приём ENTITY_FOUND + сводка в консоли SW. contextMenus/storage — по плану с v_10/v_12.",
         doc: "architecture.md §D.3",
         since: "v_01",
       },
@@ -53,7 +53,7 @@ export const reqGroups: ReqGroup[] = [
         id: "content",
         req: "content.js — точка входа Content Script (MutationObserver, делегирование адаптеру, инъекция UI-слоя)",
         status: "fail",
-        note: "В v_01 создан: сигнал запуска на vk.ru. MutationObserver и инъекция UI-слоя — с v_03/v_07 по плану.",
+        note: "v_01: сигнал запуска. v_03: скан + debounced MutationObserver (600 мс) + дедупликация + отчёт ENTITY_FOUND. Инъекция UI-слоя — с v_07 по плану.",
         doc: "architecture.md §D.1",
         since: "v_01",
       },
@@ -61,8 +61,9 @@ export const reqGroups: ReqGroup[] = [
         id: "adapter",
         req: "adapters/vkru.js — обнаружение сущностей и нормализация в ENTITY",
         status: "fail",
-        note: "Отсутствует. Писать вслепую запрещено (§5.7): этапы 2–4 требуют диагностических snippet'ов для DevTools vk.ru.",
+        note: "Создан в v_03 по данным диагностики 3A: scan() только по data-testid, идентификация только по href, ENTITY-контракт. §F закрыт: ключ — нормализованный href, не data-* и не vkit-*.",
         doc: "architecture.md §D.2, РЕГЛАМЕНТ §5.7",
+        since: "v_03",
       },
       {
         id: "storage",
@@ -75,7 +76,7 @@ export const reqGroups: ReqGroup[] = [
         id: "messaging",
         req: "core/messaging.js — маршрутизация сообщений MV3",
         status: "fail",
-        note: "Создан в v_02: CTX_MSG (PING/PONG), канал проверен вручную. Полная маршрутизация команд — с этапами 8–9.",
+        note: "v_02: CTX_MSG (PING/PONG), канал проверен. v_03: + ENTITY_FOUND (content → SW). Полная маршрутизация команд — с этапами 8–9.",
         doc: "architecture.md §D, РЕГЛАМЕНТ ч.6",
         since: "v_02",
       },
@@ -410,8 +411,10 @@ export const termLines: TermLine[] = [
   { type: "pass", text: "RESULT_v_01.md: PASS от Пользователя (18.08.2026) — v_01 закрыт" },
   { type: "pass", text: "шаг 2: v_02 — core/messaging.js · PING/PONG · default_locale: ru" },
   { type: "pass", text: "RESULT_v_02.md: PASS от Пользователя (19.08.2026) — v_02 закрыт" },
-  { type: "arrow", text: "итог: 2 сборки подтверждены (v_01, v_02) · курс — Этап 2 / v_03" },
-  { type: "cmd", text: "ожидание задания на v_03 (AGENTS.md)_" },
+  { type: "pass", text: "3A ЗАКРЫТ: data-testid CONFIRMED · href — ключ · vkit-* не используются" },
+  { type: "pass", text: "шаг 3: v_03 — adapters/vkru.js · ENTITY_FOUND · MutationObserver 600 мс" },
+  { type: "arrow", text: "статус: v_03 собран — ожидает ручной проверки в Edge" },
+  { type: "cmd", text: "ожидание RESULT_v_03.md_" },
 ];
 
 /* ---------- конфликт стека ---------- */
@@ -463,8 +466,8 @@ export const entityNotes = [
   },
   {
     field: "data-* атрибуты",
-    rule: "data-post-id / data-author-id — HYPOTHESIS. Подтверждаются snippet'ом для DevTools до написания vkru.js.",
-    doc: "§F, §5.7",
+    rule: "Диагностика 3A закрыла вопрос: идентификация — только по нормализованному href (/idNNN, /clubNNN, /wall±NNN_MMM, ?reply=&thread=). data-* для ключей не используются, vkit-* запрещены.",
+    doc: "§F, §5.7 · 3A CLOSED",
   },
   {
     field: "sourceElement",

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Reveal from "./components/Reveal";
 import Terminal from "./components/Terminal";
 import ScoreRing from "./components/ScoreRing";
@@ -6,6 +7,7 @@ import Roadmap from "./components/Roadmap";
 import Steps from "./components/Steps";
 import V01Sheet, { type Verdict } from "./components/V01Sheet";
 import V02Sheet from "./components/V02Sheet";
+import V03Sheet from "./components/V03Sheet";
 import {
   counts,
   stages,
@@ -20,16 +22,21 @@ const DOC_ARCH =
   "https://github.com/alex-6675/context-vkru/blob/main/docs/architecture.md";
 const DOC_REG =
   "https://github.com/alex-6675/context-vkru/blob/main/docs/%D0%A0%D0%95%D0%93%D0%9B%D0%90%D0%9C%D0%95%D0%9D%D0%A2_%D0%A0%D0%90%D0%91%D0%9E%D0%A2_v2_0.md";
+const DOC_3A =
+  "https://github.com/alex-6675/context-vkru/blob/main-qwen_v_03/reports/report_2026-08-19.md";
+
+const VERDICT_KEY = "ctxvkru-verdict-v03";
 
 const extensionFiles = [
   "EdgeExtension/manifest.json",
   "EdgeExtension/_locales/ru/messages.json",
   "EdgeExtension/src/core/messaging.js",
+  "EdgeExtension/src/adapters/vkru.js",
   "EdgeExtension/src/background.js",
   "EdgeExtension/src/content.js",
-  "reports/v_02/BUILD.md",
-  "reports/v_02/TEST.md",
-  "reports/v_02/RESULT_v_02.md",
+  "reports/v_03/BUILD.md",
+  "reports/v_03/TEST.md",
+  "reports/v_03/RESULT_v_03.md",
   "scripts/Build.ps1",
   "scripts/Clean.ps1",
   "scripts/Test.ps1",
@@ -83,17 +90,32 @@ function SectionHead({
 /* ---------- приложение ---------- */
 
 export default function App() {
-  /* RESULT_v_02.md в репо (ветка main-qwen_v_02): PASS от Пользователя, 19.08.2026.
-     Вердикт зафиксирован официально — рабочий лист шага 2 закрыт, как и шаг 1. */
-  const verdict: Verdict = "pass";
-  const setVerdict: (v: Verdict) => void = () => undefined;
+  const [verdict, setVerdictState] = useState<Verdict>(() => {
+    try {
+      const raw = localStorage.getItem(VERDICT_KEY);
+      if (raw === "pass" || raw === "fail") return raw;
+    } catch {
+      /* приватный режим */
+    }
+    return null;
+  });
+
+  const setVerdict = (v: Verdict) => {
+    setVerdictState(v);
+    try {
+      if (v) localStorage.setItem(VERDICT_KEY, v);
+      else localStorage.removeItem(VERDICT_KEY);
+    } catch {
+      /* приватный режим */
+    }
+  };
 
   const statusChip =
     verdict === "pass"
-      ? { cls: "border-pass/50 bg-pass/10 text-pass", dot: "bg-pass", label: "v_02 · PASS" }
+      ? { cls: "border-pass/50 bg-pass/10 text-pass", dot: "bg-pass", label: "v_03 · PASS" }
       : verdict === "fail"
-        ? { cls: "border-fail/50 bg-fail/10 text-fail", dot: "bg-fail", label: "v_02 · FAIL" }
-        : { cls: "border-warn/50 bg-warn/10 text-warn", dot: "bg-warn", label: "v_02 · ждёт Edge" };
+        ? { cls: "border-fail/50 bg-fail/10 text-fail", dot: "bg-fail", label: "v_03 · FAIL" }
+        : { cls: "border-warn/50 bg-warn/10 text-warn", dot: "bg-warn", label: "v_03 · ждёт Edge" };
 
   return (
     <div className="relative min-h-screen font-body text-ink">
@@ -125,16 +147,19 @@ export default function App() {
             </div>
 
             <div className="ml-auto flex items-center gap-2">
-              <span className="hidden items-center gap-1.5 border border-pass/50 bg-pass/10 px-3 py-1.5 font-mono text-[10.5px] font-bold tracking-wider text-pass sm:flex">
+              <span className="hidden items-center gap-1.5 border border-pass/40 bg-pass/[0.07] px-2.5 py-1.5 font-mono text-[10px] font-bold tracking-wider text-pass/80 lg:flex">
                 v_01 PASS
               </span>
+              <span className="hidden items-center gap-1.5 border border-pass/40 bg-pass/[0.07] px-2.5 py-1.5 font-mono text-[10px] font-bold tracking-wider text-pass/80 md:flex">
+                v_02 PASS
+              </span>
               <a
-                href={DOC_ARCH}
+                href={DOC_3A}
                 target="_blank"
                 rel="noreferrer"
                 className="filter-btn hidden items-center gap-1.5 border border-line bg-panel px-3 py-1.5 font-mono text-[10.5px] tracking-wide text-dim hover:border-steel hover:text-ink lg:flex"
               >
-                architecture.md <IconExt />
+                report_2026-08-19.md <IconExt />
               </a>
               <span
                 className={`flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[10.5px] font-bold tracking-wider ${statusChip.cls}`}
@@ -152,29 +177,37 @@ export default function App() {
             <div>
               <Reveal>
                 <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-steel">
-                  Итоги шага 2 приняты · ветка main-qwen_v_02
+                  Шаг 3 / v_03 · адаптер собран по report_2026-08-19.md
                 </p>
                 <h1 className="mt-4 font-display text-[clamp(1.9rem,4.6vw,3.3rem)] font-extrabold leading-[1.08] tracking-tight text-ink">
-                  <span className="text-pass">v_02 — PASS.</span>
+                  <span className="text-pass">3A закрыт.</span>
                   <br />
-                  <span className="text-pass">Этап 1 закрыт.</span>
+                  <span className={verdict === "pass" ? "text-pass" : verdict === "fail" ? "text-fail" : "text-steel"}>
+                    {verdict === "pass"
+                      ? "v_03 принят — ждём M-04."
+                      : verdict === "fail"
+                        ? "FAIL — итерация внутри v_03."
+                        : "Адаптер ищет сущности."}
+                  </span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-dim">
-                  <span className="font-mono text-[13px] text-pass">RESULT_v_02.md</span> в репо:
-                  PASS от Пользователя (19.08.2026, «tested OK via tester-tool») — все пять критериев:
-                  версия 0.0.2 без ошибок, PING/PONG в консоли Service Worker, тройка строк на странице
-                  vk.ru, повтор после F5, локаль из замечания v_01. Диагностический канал{" "}
-                  <span className="font-mono text-[12.5px] text-steel">ctx:ping ⇄ ctx:pong</span> между
-                  content.js и Service Worker подтверждён вручную. По §4 переход к Этапу 2 разрешён —
-                  но по AGENTS.md следующее задание (v_03) и решения по адаптеру приходят от
-                  проектировщика; до этого — СТОП.
+                  Диагностика 3A.3 дала исчерпывающие данные: поиск — только по{" "}
+                  <span className="font-mono text-[12.5px] text-ink">data-testid</span> (семантические
+                  якоря VK), идентификация — только по нормализованному{" "}
+                  <span className="font-mono text-[12.5px] text-ink">href</span>,{" "}
+                  <span className="font-mono text-[12.5px] text-fail">vkit-*</span> не используются.
+                  Собран <span className="font-mono text-[13px] text-ink">v_03 «VK.RU Adapter: обнаружение»</span>:
+                  комментарии включая треды и посты → ENTITY + живой{" "}
+                  <span className="font-mono text-[12.5px] text-ink">sourceElement</span> →{" "}
+                  <span className="font-mono text-[12.5px] text-steel">ctx:entity-found</span> в Service
+                  Worker. Только «обнаружил → сообщил»: без ▲, цвета, базы, маркера и storage.
                 </p>
               </Reveal>
 
               <Reveal delay={120}>
                 <div className="mt-6 flex flex-wrap gap-2">
-                  <span className="border border-pass/50 bg-pass/10 px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-pass">
-                    v_01 · PASS (18.08.2026)
+                  <span className="border border-pass/40 bg-pass/[0.07] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-pass/90">
+                    v_01 PASS · v_02 PASS
                   </span>
                   <span
                     className={`border px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider ${
@@ -186,13 +219,13 @@ export default function App() {
                     }`}
                   >
                     {verdict === "pass"
-                      ? "v_02 · PASS (19.08.2026)"
+                      ? "v_03 · PASS зафиксирован"
                       : verdict === "fail"
-                        ? "v_02 · FAIL зафиксирован"
-                        : "v_02 · вердикт ожидается"}
+                        ? "v_03 · FAIL зафиксирован"
+                        : "v_03 · вердикт ожидается"}
                   </span>
                   <span className="border border-steel/50 bg-steel/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-steel">
-                    {verdict === "pass" ? "по плану: этап 2 · v_03 — ждём задание" : "пакет: 0.0.2 · vanilla js"}
+                    {verdict === "pass" ? "M-04 выдаёт проектировщик" : "пакет: 0.0.3 · plain MV3"}
                   </span>
                 </div>
               </Reveal>
@@ -201,7 +234,7 @@ export default function App() {
                 <div className="mt-7 grid gap-5 sm:grid-cols-2">
                   <div>
                     <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-pass/80">
-                      Пакет расширения · v_02 на диске
+                      Пакет расширения · v_03 на диске
                     </p>
                     <div className="mt-2.5 flex flex-wrap gap-1.5">
                       {extensionFiles.map((f) => (
@@ -229,11 +262,9 @@ export default function App() {
                       ))}
                     </div>
                     <p className="mt-2.5 text-[12.5px] leading-relaxed text-faint">
-                      В корень, загружаемый в Edge, не попадает ни одной npm-зависимости. Node нужен
-                      лишь для сборки этого рабочего листа:{" "}
-                      <span className="font-mono text-[11.5px] text-dim">Node 22 LTS</span>{" "}
-                      (Vite 6 принимает ^18 / ^20 / ≥22; фикс —{" "}
-                      <span className="font-mono text-[11.5px] text-dim">.nvmrc</span>).
+                      Сборки нет — plain MV3: пакет и есть артефакт. Node нужен лишь для этого
+                      рабочего листа (<span className="font-mono text-[11.5px] text-dim">.nvmrc</span> →
+                      Node 22 LTS).
                     </p>
                   </div>
                 </div>
@@ -262,16 +293,16 @@ export default function App() {
                   Подтверждённые сборки
                 </p>
                 <p className="mt-2 font-display text-3xl font-extrabold text-ink">
-                  {verdict === "pass" ? 2 : 1}
+                  {verdict === "pass" ? 3 : 2}
                   <span className="text-lg text-faint"> / {stages.length}</span>
                 </p>
                 <div className="mt-3 h-1 overflow-hidden rounded-full bg-line">
                   <div
-                    className={`progress-fill h-full rounded-full ${verdict === "pass" ? "w-[13%] bg-pass" : "w-[7%] bg-steel"}`}
+                    className={`progress-fill h-full rounded-full ${verdict === "pass" ? "w-[20%] bg-pass" : "w-[13%] bg-steel"}`}
                   />
                 </div>
                 <p className="mt-1.5 text-[12px] text-dim">
-                  v_01 PASS · v_02 {verdict === "pass" ? "PASS" : verdict === "fail" ? "FAIL" : "на проверке"}
+                  v_01 ✓ · v_02 ✓ · v_03 {verdict === "pass" ? "PASS" : verdict === "fail" ? "FAIL" : "на проверке"}
                 </p>
               </div>
 
@@ -280,10 +311,10 @@ export default function App() {
                   Пакет расширения
                 </p>
                 <p className="mt-2 font-display text-3xl font-extrabold text-ink">
-                  0.0.2<span className="text-lg text-faint"> · MV3</span>
+                  0.0.3<span className="text-lg text-faint"> · MV3</span>
                 </p>
                 <p className="mt-1.5 text-[12px] leading-snug text-dim">
-                  5 файлов · 0 зависимостей · default_locale: ru
+                  + adapters/vkru.js · обнаружение по data-testid · ключ — href
                 </p>
               </div>
 
@@ -293,59 +324,69 @@ export default function App() {
                   Один модуль → одна сборка → один результат
                 </p>
                 <p className="mt-1.5 text-[12px] leading-snug text-dim">
-                  v_01 → PASS · v_02 → PASS (§4). Переход к Этапу 2 разрешён; по AGENTS.md — ждём задание
+                  До PASS в RESULT_v_03.md модуль M-04 не выдаётся (report_2026-08-19.md)
                 </p>
               </div>
             </div>
           </Reveal>
         </section>
 
-        {/* 01 — шаг 2 / v_02 */}
+        {/* 01 — шаг 3 / v_03 */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
             num="01"
-            title="Шаг 2 · v_02 — диагностический канал · закрыт"
-            sub="Рабочий лист сборки v_02: схема PING/PONG, изменения пакета (дословные листинги), инструкция обновления расширения в Edge и критерии TEST.md. Закрыт вердиктом PASS (RESULT_v_02.md в ветке main-qwen_v_02, 19.08.2026)."
+            title="Шаг 3 · v_03 — VK.RU Adapter: обнаружение"
+            sub="Рабочий лист сборки по заданию report_2026-08-19.md: итоговая таблица признаков 3A, конвейер обнаружения, дословные листинги пакета, загрузка в Edge и критерии TEST.md. Вердикт фиксируете вы — он сохраняется локально и управляет сводкой."
           />
-          <V02Sheet verdict="pass" setVerdict={setVerdict} locked />
+          <V03Sheet verdict={verdict} setVerdict={setVerdict} />
         </section>
 
-        {/* 02 — шаг 1 / v_01 (закрыт) */}
+        {/* 02 — шаг 2 / v_02 (закрыт) */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
             num="02"
+            title="Шаг 2 · v_02 — диагностический канал · закрыт"
+            sub="Историческая сборка: PING/PONG между content.js и Service Worker. Закрыта вердиктом PASS (RESULT_v_02.md, 19.08.2026); листинги оставлены для протокола, канал сохранён в v_03 как регрессия."
+          />
+          <V02Sheet verdict="pass" setVerdict={() => undefined} locked />
+        </section>
+
+        {/* 03 — шаг 1 / v_01 (закрыт) */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="03"
             title="Шаг 1 · v_01 — контрольный каркас · закрыт"
             sub="Историческая сборка: минимальный MV3-манифест, Service Worker и content script. Закрыта вердиктом PASS (RESULT_v_01.md, 18.08.2026); листинги оставлены для протокола."
           />
           <V01Sheet verdict="pass" setVerdict={() => undefined} locked />
         </section>
 
-        {/* 03 — дорожная карта */}
+        {/* 04 — дорожная карта */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="03"
+            num="04"
             title="Дорожная карта v_01 — v_15"
-            sub="Часть 6 регламента: строго последовательно, один модуль — одна тестовая сборка. v_01 и v_02 отмечены зелёным (PASS подтверждены), v_03 пульсирует как следующая работа по плану; клик раскрывает цель и PASS-критерий."
+            sub="Часть 6 регламента: строго последовательно, один модуль — одна тестовая сборка. v_01 и v_02 зелёные (PASS подтверждены), v_03 пульсирует как текущая работа; клик раскрывает цель и PASS-критерий."
           />
           <Roadmap />
         </section>
 
-        {/* 04 — матрица */}
+        {/* 05 — матрица */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="04"
+            num="05"
             title="Сверка с architecture.md"
             sub={`Постатейная проверка: границы и стек (§B), компоненты (§D), контракт ENTITY (§E), идентификация (§F–I), сценарий ПКМ (§J), отказ от legacy (§K), структура каталогов (§L). Всего ${counts.total} пунктов. Бейдж «файл · v_XX» — артефакт создан в соответствующей сборке, полная функция приходит по плану.`}
           />
           <ConformanceMatrix />
         </section>
 
-        {/* 05 — контракт */}
+        {/* 06 — контракт */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="05"
+            num="06"
             title="Контракт ENTITY"
-            sub="Часть 3 регламента: структура заморожена, компоненты обмениваются только ею. Четыре полевых правила — что можно считать ключом, а что запрещено трогать."
+            sub="Часть 3 регламента: структура заморожена, компоненты обмениваются только ею. Полевые правила — что можно считать ключом, а что запрещено трогать; вопрос §F закрыт диагностикой 3A."
           />
           <div className="grid gap-5 lg:grid-cols-[1.15fr_1fr]">
             <Reveal>
@@ -379,10 +420,10 @@ export default function App() {
           </div>
         </section>
 
-        {/* 06 — стек */}
+        {/* 07 — стек */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="06"
+            num="07"
             title="Конфликт стека — решён разведением корней"
             sub="Единственный WARN аудита (§2.2): шаблон собран на том, что регламент запрещает внутри расширения. Пакет EdgeExtension/ пишется на Vanilla JS с нулём зависимостей — шаблон остаётся снаружи."
           />
@@ -426,10 +467,10 @@ export default function App() {
           </div>
         </section>
 
-        {/* 07 — чек-лист */}
+        {/* 08 — чек-лист */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="07"
+            num="08"
             title="Чек-лист запуска"
             sub="Семь шагов старта проекта. Прогресс сохраняется локально; справа — шаблон задания M-01 по форме §7 как эталон формата для всех следующих модулей."
           />
@@ -447,10 +488,10 @@ export default function App() {
                   </p>
                   <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-dim">
                     {verdict === "pass"
-                      ? "RESULT_v_02.md принят: v_02 = PASS (19.08.2026). По плану (§6) впереди Этап 2 / v_03 «VK.RU Adapter: обнаружение». По AGENTS.md не начинаю его по собственной инициативе: решения — как идентифицировать сущности vk.ru, какие селекторы использовать, нужен ли MutationObserver — должны прийти в задании от проектировщика."
+                      ? "RESULT_v_03.md зафиксирован: v_03 = PASS. По report_2026-08-19.md следующий модуль — M-04 (Navigation Target как отдельный контрольный этап); он не выдаётся до PASS — теперь выдача за проектировщиком."
                       : verdict === "fail"
-                        ? "v_02 = FAIL: остаёмся внутри этапа (§5.1). Опишите причину в RESULT_v_02.md, исправьте пакет и повторите тест — переход к v_03 запрещён."
-                        : "Ожидание RESULT_v_02.md от Пользователя: обновите расширение (↻), сверьте строки PING/PONG из TEST.md и зафиксируйте вердикт в рабочем листе шага 2. Статус устанавливает только человек (§5.6)."}
+                        ? "v_03 = FAIL: остаёмся внутри этапа (§5.1). Опишите причину в RESULT_v_03.md — при несовпадении data-testid с живым DOM правка селекторов выполняется внутри v_03 без изменения архитектуры."
+                        : "Ожидание RESULT_v_03.md от Пользователя: обновите расширение (⟳) до 0.0.3 и пройдите TEST.md — ENTITY FOUND, подсветка sourceElement, дедупликация, ENTITY_FOUND в SW, регрессия PING/PONG. Статус устанавливает только человек (§5.6)."}
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 font-mono text-[11.5px] text-faint">
@@ -460,8 +501,11 @@ export default function App() {
                   <a href={DOC_REG} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-ink">
                     docs/РЕГЛАМЕНТ_РАБОТ_v2_0.md <IconExt />
                   </a>
+                  <a href={DOC_3A} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-ink">
+                    reports/report_2026-08-19.md (задание) <IconExt />
+                  </a>
                   <span className="mt-1 text-line2">—</span>
-                  <span>v_01 PASS (18.08.2026) · v_02 PASS (19.08.2026)</span>
+                  <span>v_01 PASS · v_02 PASS · v_03: {verdict ? verdict.toUpperCase() : "ОЖИДАНИЕ"}</span>
                 </div>
               </div>
             </Reveal>
