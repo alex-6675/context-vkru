@@ -1,21 +1,4464 @@
-MIT License
+--- reports/v_03/BUILD_v03f2.md (原始)
 
-Copyright (c) 2024 Ermek T.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
++++ reports/v_03/BUILD_v03f2.md (修改后)
+# BUILD · v03f2 · M-03-fix2 (внутри Этапа 2, после FAIL v_03f)
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+**МОДУЛЬ:** M-03-fix2 · **СБОРКА:** v03f2 · **МАНИФЕСТ:** 0.0.5
+**ОСНОВАНИЕ:** reports/v_03/report_v_03_f_fix.md (ветка main-qwen_v_03)
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+## Вердикт 3C (принят)
+
+Прод повреждён, архитектура здорова: на /feed ground truth dates=168 и
+roots+inthread=97+71=168; coverage расширения дала dates=168 / roots=0 —
+roots-селекторы съедены порчей передачи. Архитектурное решение 3A
+(closest по testid) подтверждено полностью; fallback для /feed не нужен.
+
+## Состав сборки
+
+| Файл | Изменение |
+| --- | --- |
+| `src/adapters/vkru.js` | **полная замена**: T_DATE/T_ROOT собраны через `U = String.fromCharCode(95)`; RE_WALL — `new RegExp` с U; POST: postUrl из `data-post-id` (CONFIRMED на 100% постов), без postdate-селектора |
+| `src/content.js` | **полная замена**: coverage-гейт `posts/dates/roots` (логируется при изменении), селекторы coverage собраны через U |
+| `src/core/messaging.js` | `CTX_BUILD = "v03f2"`; имена констант и типы сообщений **без изменений** (совместимость с background.js, raw-файл ветки подтвердил `CTX_BUILD` / `CTX_MSG.ENTITY_FOUND`) |
+| `manifest.json` | ТОЛЬКО `version: 0.0.5` |
+| `src/background.js` | **НЕ меняется** (приём ENTITY_FOUND и PING/PONG — как в v_03) |
+
+## Порче-невозможность (§25, новое правило регламента)
+
+В строковом содержимом селекторов и regex **нет литеральных подчёркиваний** —
+они собираются в runtime:
+
+```
+'a[data-testid="wall' + U + 'comment' + U + 'date"]'
+    → a[data-testid="wall_comment_date"]
+new RegExp("^/wall(-?\\d+)" + U + "(\\d+)$")
+    → /^\/wall(-?\d+)_(\d+)$/
+```
+
+Канал передачи физически не может съесть то, чего в исходнике нет.
+coverage-строка — приёмочный гейт целостности: `roots>0` означает,
+что код дошёл до браузера живым.
+
+## Как загрузить
+
+Сохранить UTF-8 → `edge://extensions` → Reload (⟳) → версия **0.0.5** → F5 на vk.ru.
+Далее — `TEST_v03f2.md`. РЕПО-ГЕЙТ действует: коммит в ветку → raw-верификация
+проектировщиком → только затем тест пользователем.
+
+--- reports/v_03/TEST_v03f2.md (原始)
+
+
++++ reports/v_03/TEST_v03f2.md (修改后)
+# TEST · v03f2 · M-03-fix2 (по report_v_03_f_fix.md)
+
+> **РЕПО-ГЕЙТ:** пользователь НЕ тестирует до коммита в main-qwen_v_03
+> и raw-верификации файлов проектировщиком.
+
+## 1. Предусловия
+
+- Reload (⟳) в edge://extensions → версия **0.0.5**, без Errors.
+- Открыты две консоли: страница (F12, фильтр `CTX`) и Service Worker (inspect).
+- Страница: **/feed** (минимальный тест под ограничения).
+
+## 2. Порядок проверки
+
+1. **ГЕЙТ:** строка `[CTX v03f2] coverage posts/dates/roots = 4/…/…`
+   с **roots БОЛЬШЕ 0** (ожидание ≈ **4/168/168**).
+   `roots=0` → код снова дошёл повреждённым: **СТОП и сообщить**
+   (дальше не тестировать).
+2. Строки `COMMENT …` с `post=wall-…` и `reply=…` (много — это норма).
+3. Строки `POST …` теперь с `post=wall-…` (не «-»).
+4. SW-консоль: `entities reported` включает COMMENT.
+5. `/collabis` — опционально, те же критерии.
+
+## 3. Ожидаемый результат (PASS)
+
+- Гейт `roots>0` выполнен;
+- COMMENT и POST обнаружены; postUrl извлечён (`post≠-`);
+- SW получил COMMENT; карточка расширения без ошибок;
+- регрессия v_02: PING/PONG работает.
+
+## 4. Признаки FAIL
+
+- `roots=0` на /feed при живых датах → порча передачи (итерация внутри v03f2);
+- 0 COMMENT при `roots>0`; `post=-` у POST; дубликаты; красные ошибки.
+
+## 5. RESULT
+
+Фиксация — в `reports/v_03/RESULT_v_03.md` (статус по fix2) и в dashboard.
+После PASS проектировщик закрывает v_03 и выдаёт M-04 (Этап 3 — Navigation Target).
+
+--- reports/v_03/report_v_03_f_fix.md (原始)
+
+
++++ reports/v_03/report_v_03_f_fix.md (修改后)
+# report_v_03_f_fix.md — принят из ветки main-qwen_v_03
+
+> **ПОМЕТКА РЕДАКТОРА (Coder, синхронизация):** документ принят дословно из ветки
+> main-qwen_v_03. Канал передачи снова повредил подчёркивания в рендер-вью
+> (в т.ч. в именах констант — `CTX_BUILD`→`CTXBUILD` и др.). При исполнении
+> M-03-fix2 идентификаторы восстановлены по raw-файлу ветки
+> `src/core/messaging.js` (в репозитории закоммичена версия с `CTX_BUILD` /
+> `CTX_MSG.ENTITY_FOUND`; `background.js` не меняется — совместимость
+> обязательна). Селекторы в реализации собраны через `String.fromCharCode(95)`,
+> строковое содержимое литеральных подчёркиваний не содержит. Строка сборки —
+> `v03f2` (в значении подчёркиваний нет, передано без искажений).
+
+---
+
+Вердикт по 3C: строка таблицы №1 — прод повреждён, архитектура здорова
+
+| Показатель (3C, /feed) | Ground truth | Coverage расширения | Вывод |
+|---|---|---|---|
+| dates | 168 | 168 | dates-селектор в проде жив |
+| roots + inthread | 97 + 71 = 168 | 0 | roots-селекторы в проде съедены порчей |
+| owner / text / postdate | 168 / 162 / 4 | — | весь comment-компонент на /feed присутствует |
+
+Ключевые выводы:
+
+- Корни комментариев существуют и на ленте — fallback-стратегия для /feed не нужна.
+  Архитектурное решение 3A (closest по testid) подтверждено полностью.
+- Единственная причина отсутствия COMMENT — дефект передачи кода (подчёркивания).
+  Лечится конструкцией селекторов через String.fromCharCode(95) — в коде физически
+  нет подчёркиваний, портиться нечему.
+- Посты переводим на data-post-id (CONFIRMED на 100% постов) — ID поста больше не
+  зависит от селектора с подчёркиваниями.
+
+---
+
+МОДУЛЬ: M-03-fix2 (внутри Этапа 2, после FAIL v_03f)
+СБОРКА: v03f2 (manifest 0.0.5)
+
+ЦЕЛЬ:
+Порче-невозможная реализация обнаружения: все testid/regex, содержащие "_",
+собираются через U=String.fromCharCode(95). В файлах НЕТ литеральных
+подчёркиваний (кроме значений в runtime).
+
+ИЗМЕНЯЕМЫЕ ФАЙЛЫ:
+
+- EdgeExtension/src/adapters/vkru.js (полная замена)
+- EdgeExtension/src/content.js (полная замена)
+- EdgeExtension/src/core/messaging.js (полная замена)
+- EdgeExtension/manifest.json (ТОЛЬКО строка version → 0.0.5)
+- background.js НЕ меняется.
+
+ЧТО СДЕЛАНО:
+
+- T_DATE/T_ROOT собраны через U; RE_WALL через new RegExp с U.
+- POST: postUrl из атрибута data-post-id (CONFIRMED), без postdate-селектора.
+- COMMENT: date → closest(T_ROOT) → owner/text/reply/thread (как в 3A).
+- coverage-гейт: строка posts/dates/roots — пользователь САМ видит целостность
+  селекторов после перезагрузки (roots>0 = код дошёл живым).
+
+КОД — см. закоммиченные файлы ветки (raw-источник):
+
+- EdgeExtension/src/core/messaging.js
+- EdgeExtension/src/adapters/vkru.js
+- EdgeExtension/src/content.js
+- EdgeExtension/manifest.json
+
+КАК СОБРАТЬ / ЗАГРУЗИТЬ:
+Сохранить UTF-8 → edge://extensions → Reload → версия 0.0.5 → F5 на vk.ru.
+
+ТЕСТ (минимальный, под ограничения — одна страница /feed):
+Консоль страницы, фильтр CTX:
+
+- ГЕЙТ: `coverage posts/dates/roots = 4/…/…` с roots БОЛЬШЕ 0
+  (ожидание ≈ 4/168/168). roots=0 → код снова дошёл повреждённым,
+  СТОП и сообщить (не тестировать дальше).
+- Строки COMMENT с post=wall-… и reply=… (много — это норма).
+- Строки POST теперь с post=wall-… (не «-»).
+- SW-консоль: entities reported включает COMMENT.
+- /collabis — опционально, те же критерии.
+
+ОЖИДАЕМЫЙ РЕЗУЛЬТАТ (PASS):
+Гейт roots>0 выполнен; COMMENT и POST обнаружены; postUrl извлечён;
+SW получил COMMENT; карточка без ошибок.
+→ reports/v_03/RESULT_v_03.md (fix2) и dashboard. Затем закрываю v_03
+и выдаю M-04 (Этап 3 — Navigation Target).
+
+СТОП.
+
+Процессуальная фиксация (§25 регламента, новое правило): любой будущий код
+проекта, содержащий testid/URL-схемы с подчёркиваниями, пишется только через
+String.fromCharCode(95); coverage-строка является приёмочным гейтом целостности
+передачи. Coder коммитит файлы в ветку при первой возможности.
+
+СТОП.
+
+--- src/components/V03F2Section.tsx (原始)
+
+
++++ src/components/V03F2Section.tsx (修改后)
+import { useState } from "react";
+import {
+  rows3C,
+  conclusions3C,
+  assemblyLines,
+  fix2Files,
+  gateSteps,
+  passCriteriaV03F2,
+  buildResultV03Fix2,
+} from "../data/v03f2";
+import type { Verdict } from "./V01Sheet";
+import Reveal from "./Reveal";
+
+const KIND_BADGE: Record<string, { label: string; cls: string }> = {
+  replace: { label: "замена", cls: "border-steel/50 bg-steel/10 text-steel" },
+  edit: { label: "точечно", cls: "border-warn/50 bg-warn/10 text-warn" },
+  frozen: { label: "не тронут", cls: "border-pass/50 bg-pass/10 text-pass" },
+};
+
+export default function V03F2Section({
+  verdict,
+  setVerdict,
+}: {
+  verdict: Verdict;
+  setVerdict: (v: Verdict) => void;
+}) {
+  const [note, setNote] = useState("");
+
+  const download = () => {
+    if (!verdict) return;
+    const blob = new Blob([buildResultV03Fix2(verdict, note)], {
+      type: "text/markdown;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "RESULT_v_03.md";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+        {/* левая колонка */}
+        <div className="space-y-6">
+          <Reveal>
+            <div className="cornered border border-line bg-panel/70 p-5 sm:p-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="font-display text-[15px] font-semibold text-ink">
+                  3C · прод повреждён, архитектура здорова
+                </h3>
+                <span className="border border-warn/50 bg-warn/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-widest text-warn">
+                  /feed · ground truth
+                </span>
+              </div>
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[620px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-line2">
+                      <th className="py-2 pr-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-faint">
+                        Показатель
+                      </th>
+                      <th className="py-2 pr-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-faint">
+                        Ground truth
+                      </th>
+                      <th className="py-2 pr-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-faint">
+                        Coverage
+                      </th>
+                      <th className="py-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-faint">
+                        Вывод
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows3C.map((r) => (
+                      <tr
+                        key={r.metric}
+                        className="group border-b border-line/60 align-top transition-colors last:border-b-0 hover:bg-steel/[0.04]"
+                      >
+                        <td className="py-3 pr-4 font-mono text-[11.5px] font-bold text-ink">
+                          {r.metric}
+                        </td>
+                        <td className="py-3 pr-4 font-mono text-[12px] text-dim">{r.truth}</td>
+                        <td className="py-3 pr-4">
+                          <span
+                            className={`font-mono text-[13px] font-bold ${
+                              r.ok ? "text-pass" : "text-fail"
+                            }`}
+                          >
+                            {r.coverage}
+                          </span>
+                        </td>
+                        <td className="py-3 text-[12px] leading-relaxed text-dim">{r.verdict}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ul className="mt-4 space-y-2">
+                {conclusions3C.map((c) => (
+                  <li key={c} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-steel" />
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+
+          <Reveal delay={80}>
+            <div className="cornered border border-steel/40 bg-inset/90 p-5 sm:p-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="font-display text-[15px] font-semibold text-ink">
+                  Порче-невозможность · §25
+                </h3>
+                <span className="border border-steel/50 bg-steel/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-widest text-steel">
+                  U = String.fromCharCode(95)
+                </span>
+              </div>
+              <p className="mt-2.5 text-[12.5px] leading-relaxed text-dim">
+                В строковом содержимом селекторов и regex нет литеральных подчёркиваний —
+                они собираются в runtime. Канал передачи физически не может съесть то,
+                чего в исходнике нет.
+              </p>
+              <div className="mt-4 space-y-2.5">
+                {assemblyLines.map((l) => (
+                  <div
+                    key={l.source}
+                    className="group border border-line/70 bg-panel/60 px-4 py-3 transition-all hover:border-steel/50 hover:bg-panel"
+                  >
+                    <p className="overflow-x-auto whitespace-nowrap font-mono text-[11.5px] text-dim">
+                      <span className="text-steel">U</span>
+                      <span className="text-faint"> := </span>
+                      <span className="text-warn">String.fromCharCode(95)</span>
+                      <span className="text-faint"> = </span>
+                      <span className="text-ink">"_"</span>
+                    </p>
+                    <p className="mt-1.5 overflow-x-auto whitespace-nowrap font-mono text-[11.5px] text-dim">
+                      {l.source}
+                    </p>
+                    <p className="mt-1.5 flex items-center gap-2 overflow-x-auto whitespace-nowrap font-mono text-[12px] font-bold text-pass">
+                      <svg width="12" height="10" viewBox="0 0 12 10" fill="none" className="shrink-0">
+                        <path d="M1 5h8m0 0L6 1.8M9 5L6 8.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      {l.result}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div className="border border-line bg-panel/70 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-display text-[15px] font-semibold text-ink">
+                  Файлы сборки · 0.0.5
+                </h3>
+                <span className="font-mono text-[10px] text-faint">BUILD_v03f2.md</span>
+              </div>
+              <ul className="mt-3.5 space-y-2">
+                {fix2Files.map((f) => {
+                  const b = KIND_BADGE[f.kind];
+                  return (
+                    <li
+                      key={f.path}
+                      className="group border border-line/70 bg-inset/60 px-3.5 py-2.5 transition-colors hover:border-line2 hover:bg-inset"
+                    >
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <p className="font-mono text-[12px] font-bold text-ink">{f.path}</p>
+                        <span
+                          className={`ml-auto border px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider ${b.cls}`}
+                        >
+                          {b.label}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[12px] leading-relaxed text-dim">{f.change}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </Reveal>
+        </div>
+
+        {/* правая колонка */}
+        <div className="space-y-6">
+          <Reveal delay={60}>
+            <div className="cornered border border-warn/50 bg-warn/[0.06] p-5 sm:p-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="font-display text-[16px] font-bold text-warn">
+                  Приёмочный гейт · coverage
+                </h3>
+                <span className="blink-soft border border-warn/50 bg-warn/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-widest text-warn">
+                  roots&gt;0
+                </span>
+              </div>
+              <div className="mt-4 border border-line/70 bg-inset/80 px-4 py-3.5">
+                <p className="font-mono text-[12px] leading-relaxed text-dim">
+                  <span className="text-steel">[CTX v03f2]</span> coverage posts/dates/roots ={" "}
+                  <span className="text-ink">4/168/168</span>
+                </p>
+                <p className="mt-1 font-mono text-[10.5px] text-faint">
+                  ожидание на /feed · roots=0 → код повреждён → СТОП
+                </p>
+              </div>
+              <p className="mt-3 text-[12.5px] leading-relaxed text-dim">
+                coverage-строка логируется при каждом изменении счётчиков: пользователь сам
+                видит целостность селекторов после перезагрузки.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal delay={100}>
+            <div className="border border-line bg-panel/70 p-5">
+              <h3 className="font-display text-[15px] font-semibold text-ink">
+                Порядок проверки (TEST_v03f2.md)
+              </h3>
+              <ol className="mt-4 space-y-4">
+                {gateSteps.map((s, i) => (
+                  <li key={s.t} className="flex gap-3.5">
+                    <span
+                      className={`mt-px flex h-6 w-6 shrink-0 items-center justify-center border font-mono text-[11px] font-bold ${
+                        i === 0
+                          ? "border-warn/60 bg-warn/10 text-warn"
+                          : "border-steel/50 bg-steel/10 text-steel"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="text-[13.5px] font-semibold leading-snug text-ink">{s.t}</p>
+                      <p className="mt-1 text-[12.5px] leading-relaxed text-dim">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-pass/80">
+                PASS-критерии
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {passCriteriaV03F2.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="mt-[5px] shrink-0">
+                      <path d="M2 6.2L4.8 9L10 3.4" stroke="var(--color-pass)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+
+          <Reveal delay={140}>
+            <div className="border border-line bg-panel/70 p-5">
+              <h3 className="font-display text-[15px] font-semibold text-ink">
+                RESULT_v_03.md · статус по fix2
+              </h3>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setVerdict(verdict === "pass" ? null : "pass")}
+                  className={`verdict-btn cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                    verdict === "pass"
+                      ? "border-pass bg-pass/15 text-pass shadow-[0_0_24px_-6px_rgba(56,180,126,0.5)]"
+                      : "border-line bg-panel text-dim hover:border-pass/60 hover:text-pass"
+                  }`}
+                >
+                  PASS
+                </button>
+                <button
+                  onClick={() => setVerdict(verdict === "fail" ? null : "fail")}
+                  className={`verdict-btn cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                    verdict === "fail"
+                      ? "border-fail bg-fail/15 text-fail shadow-[0_0_24px_-6px_rgba(224,90,82,0.5)]"
+                      : "border-line bg-panel text-dim hover:border-fail/60 hover:text-fail"
+                  }`}
+                >
+                  FAIL
+                </button>
+              </div>
+              <p className="mt-2.5 text-[11.5px] leading-relaxed text-faint">
+                Итоговый вердикт v_03 (по последнему фиксу). Сохраняется локально; статус
+                устанавливает только Пользователь (§5.6). После PASS проектировщик выдаёт M-04.
+              </p>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Комментарий к RESULT_v_03.md (coverage, наблюдения)…"
+                className="mt-3 h-20 w-full resize-none border border-line bg-inset px-3 py-2.5 font-mono text-[12px] text-ink placeholder:text-faint focus:border-steel focus:outline-none"
+              />
+              <button
+                onClick={download}
+                disabled={!verdict}
+                className={`mt-3 w-full cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                  verdict
+                    ? "border-steel/70 bg-steel/15 text-ink hover:bg-steel/25"
+                    : "cursor-not-allowed border-line bg-panel text-faint"
+                }`}
+              >
+                Скачать RESULT_v_03.md (fix2)
+              </button>
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+--- src/data/v03f2.ts (原始)
+
+
++++ src/data/v03f2.ts (修改后)
+/* Шаг: фикс v03f2 (M-03-fix2) — данные рабочего листа.
+ * Источник задания: reports/v_03/report_v_03_f_fix.md (ветка main-qwen_v_03). */
+
+export interface Row3C {
+  metric: string;
+  truth: string;
+  coverage: string;
+  verdict: string;
+  ok: boolean;
+}
+
+export const rows3C: Row3C[] = [
+  {
+    metric: "dates",
+    truth: "168",
+    coverage: "168",
+    verdict: "dates-селектор в проде жив",
+    ok: true,
+  },
+  {
+    metric: "roots + inthread",
+    truth: "97 + 71 = 168",
+    coverage: "0",
+    verdict: "roots-селекторы съедены порчей передачи",
+    ok: false,
+  },
+  {
+    metric: "owner / text / postdate",
+    truth: "168 / 162 / 4",
+    coverage: "—",
+    verdict: "весь comment-компонент на /feed присутствует",
+    ok: true,
+  },
+];
+
+export const conclusions3C = [
+  "Корни комментариев существуют и на ленте — fallback для /feed не нужен. Архитектурное решение 3A (closest по testid) подтверждено полностью.",
+  "Единственная причина отсутствия COMMENT — дефект передачи кода (подчёркивания). Лечится конструкцией селекторов через String.fromCharCode(95): в коде физически нет подчёркиваний, портиться нечему.",
+  "Посты переводим на data-post-id (CONFIRMED на 100% постов) — ID поста больше не зависит от селектора с подчёркиваниями.",
+];
+
+export interface AssemblyLine {
+  source: string;
+  result: string;
+}
+
+export const assemblyLines: AssemblyLine[] = [
+  {
+    source: "'a[data-testid=\"wall' + U + 'comment' + U + 'date\"]'",
+    result: "a[data-testid=\"wall_comment_date\"]",
+  },
+  {
+    source: "'[data-testid=\"wall' + U + 'comments' + U + 'comment' + U + 'root\"]'",
+    result: "[data-testid=\"wallcomments_comment_root\"]",
+  },
+  {
+    source: "new RegExp(\"^/wall(-?\\\\d+)\" + U + \"(\\\\d+)$\")",
+    result: "/^\\/wall(-?\\d+)_(\\d+)$/",
+  },
+];
+
+export interface Fix2File {
+  path: string;
+  change: string;
+  kind: "replace" | "edit" | "frozen";
+}
+
+export const fix2Files: Fix2File[] = [
+  {
+    path: "src/adapters/vkru.js",
+    change: "полная замена: T_DATE/T_ROOT через U; RE_WALL — new RegExp с U; POST → data-post-id",
+    kind: "replace",
+  },
+  {
+    path: "src/content.js",
+    change: "полная замена: coverage-гейт posts/dates/roots, селекторы через U",
+    kind: "replace",
+  },
+  {
+    path: "src/core/messaging.js",
+    change: "CTX_BUILD = \"v03f2\"; константы и типы сообщений без изменений",
+    kind: "replace",
+  },
+  {
+    path: "manifest.json",
+    change: "ТОЛЬКО строка version → 0.0.5",
+    kind: "edit",
+  },
+  {
+    path: "src/background.js",
+    change: "НЕ меняется — приём ENTITY_FOUND и PING/PONG как в v_03",
+    kind: "frozen",
+  },
+];
+
+export const gateSteps = [
+  {
+    t: "ГЕЙТ: coverage posts/dates/roots",
+    d: "Фильтр CTX в консоли /feed: строка [CTX v03f2] coverage posts/dates/roots = 4/…/… с roots БОЛЬШЕ 0 (ожидание ≈ 4/168/168). roots=0 → код снова повреждён: СТОП и сообщить.",
+  },
+  {
+    t: "COMMENT с post=wall-… и reply=…",
+    d: "Строки [CTX v03f2] COMMENT … — много, это норма для /feed.",
+  },
+  {
+    t: "POST теперь с post=wall-…",
+    d: "postUrl извлечён из data-post-id — больше не «-».",
+  },
+  {
+    t: "SW: entities reported включает COMMENT",
+    d: "Service Worker получил ENTITY_FOUND; карточка без ошибок. /collabis — опционально, те же критерии.",
+  },
+];
+
+export const passCriteriaV03F2 = [
+  "Гейт roots>0 выполнен",
+  "COMMENT и POST обнаружены; postUrl извлечён (post≠-)",
+  "SW получил COMMENT; карточка без ошибок",
+  "Регрессия v_02: PING/PONG работает",
+];
+
+export function buildResultV03Fix2(verdict: "pass" | "fail", note: string): string {
+  const date = new Date().toLocaleDateString("ru-RU");
+  const box = (on: boolean) => (on ? "[x]" : "[ ]");
+  return `# RESULT · v_03 · VK.RU Adapter: обнаружение (статус по fix2 / v03f2)
+
+**СТАТУС:** ${verdict.toUpperCase()}
+**ПРОВЕРИЛ:** Пользователь (зафиксировано в рабочем листе)
+**ДАТА:** ${date}
+
+## Факт проверки (§5.6) — TEST_v03f2.md
+
+- Версия в карточке 0.0.5, ошибок нет: ${box(true)} да
+- ГЕЙТ: coverage posts/dates/roots с roots>0 (≈ 4/168/168): ${box(verdict === "pass")} да
+- COMMENT с post=wall-… и reply=…: ${box(verdict === "pass")} да
+- POST с post=wall-… (из data-post-id, не «-»): ${box(verdict === "pass")} да
+- SW: entities reported включает COMMENT: ${box(verdict === "pass")} да
+- Регрессия v_02: PING/PONG работает: ${box(verdict === "pass")} да
+
+## Вердикт
+
+- ${box(verdict === "pass")} **PASS** — v_03 закрывается; проектировщик выдаёт M-04
+  (Этап 3 — Navigation Target)
+- ${box(verdict === "fail")} **FAIL** — остаёмся в v_03 (итерация внутри v03f2)
+
+## Комментарий
+
+${note || "—"}
+
+---
+Сформировано рабочим листом фикса v03f2. LLM статус не присваивала (§5.6):
+выбор PASS/FAIL сделан Пользователем вручную.`;
+}
+
+--- EdgeExtension/manifest.json (原始)
+{
+  "manifest_version": 3,
+  "name": "__MSG_extName__",
+  "description": "__MSG_extDescription__",
+  "default_locale": "ru",
+  "version": "0.0.4",
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://vk.ru/*"],
+      "js": [
+        "src/core/messaging.js",
+        "src/adapters/vkru.js",
+        "src/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": ["https://vk.ru/*"]
+}
+
+
++++ EdgeExtension/manifest.json (修改后)
+{
+  "manifest_version": 3,
+  "name": "__MSG_extName__",
+  "description": "__MSG_extDescription__",
+  "default_locale": "ru",
+  "version": "0.0.5",
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://vk.ru/*"],
+      "js": [
+        "src/core/messaging.js",
+        "src/adapters/vkru.js",
+        "src/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": ["https://vk.ru/*"]
+}
+
+--- EdgeExtension/src/adapters/vkru.js (原始)
+/* Context VK.RU · adapters/vkru.js · v_03 — обнаружение. Vanilla JS. */
+(function () {
+  "use strict";
+
+  const COMMENT_ROOT_SEL =
+    '[data-testid="wallcomments_comment_root"],' +
+    '[data-testid="wallcomments_comment_in_thread"]';
+
+  const RE_PERSON = /^\/id(\d+)$/;
+  const RE_CLUB = /^\/club(\d+)$/;
+  const RE_WALL = /^\/wall(-?\d+)_(\d+)$/;
+
+  function normalizeHref(raw) {
+    if (!raw) return "";
+    let u;
+    try { u = new URL(raw, "https://vk.ru"); } catch (e) { return raw; }
+    if (u.hostname !== "vk.ru" && !u.hostname.endsWith(".vk.ru")) return raw;
+    const keep = [];
+    u.searchParams.forEach((v, k) => {
+      if (k === "reply" || k === "thread") keep.push(k + "=" + v);
+    });
+    return u.pathname + (keep.length ? "?" + keep.join("&") : "");
+  }
+
+  function classify(pathname) {
+    let m;
+    if ((m = pathname.match(RE_PERSON))) return { type: "PERSON", id: "id" + m[1] };
+    if ((m = pathname.match(RE_CLUB))) return { type: "COMMUNITY", id: "club" + m[1] };
+    if ((m = pathname.match(RE_WALL)))
+      return { type: m[1][0] === "-" ? "COMMUNITY_POST" : "PERSON_POST",
+               id: "wall" + m[1] + "_" + m[2] };
+    return { type: "OTHER", id: pathname };
+  }
+
+  function anchorOf(el) {
+    if (!el) return null;
+    if (el.tagName === "A" && el.getAttribute("href")) return el;
+    return el.querySelector('a[href^="/"], a[href*="vk.ru/"]');
+  }
+
+  function trim(s, n) {
+    s = (s || "").replace(/\s+/g, " ").trim();
+    return s.length > n ? s.slice(0, n) + "…" : s;
+  }
+
+  function extractComment(dateAnchor) {
+    const root = dateAnchor.closest(COMMENT_ROOT_SEL);
+    if (!root) return null;
+    const ownerA = anchorOf(root.querySelector('[data-testid="comment-owner"]'));
+    const textEl = root.querySelector('[data-testid="comment-text"]');
+    const authorHref = ownerA ? normalizeHref(ownerA.getAttribute("href")) : "";
+    const cls = authorHref
+      ? classify(new URL(authorHref, "https://vk.ru").pathname)
+      : { type: "UNKNOWN", id: "" };
+    let postId = "", replyId = "", threadId = "";
+    try {
+      const u = new URL(normalizeHref(dateAnchor.getAttribute("href")), "https://vk.ru");
+      const wm = u.pathname.match(RE_WALL);
+      if (wm) postId = "wall" + wm[1] + "_" + wm[2];
+      replyId = u.searchParams.get("reply") || "";
+      threadId = u.searchParams.get("thread") || "";
+    } catch (e) { /* noop */ }
+    return {
+      entity: {
+        kind: "COMMENT",
+        type: cls.type,
+        identity: { id: cls.id, url: authorHref },
+        authorName: trim(ownerA ? ownerA.textContent : "", 60),
+        text: trim(textEl ? textEl.textContent : "", 80),
+        navigationTarget: dateAnchor.getAttribute("href") || "",
+        context: { source: root.getAttribute("data-testid"),
+                   postUrl: postId, replyId: replyId, threadId: threadId },
+      },
+      sourceElement: root,
+    };
+  }
+
+  function extractPost(postRoot) {
+    const header = postRoot.querySelector('[data-testid="post-header"]');
+    const ownerA =
+      anchorOf(header ? header.querySelector('[data-testid="post-header-title"]') : null) ||
+      (header ? header.querySelector('a[href^="/id"], a[href^="/club"]') : null);
+    if (!ownerA) return null;
+    const authorHref = normalizeHref(ownerA.getAttribute("href"));
+    const cls = classify(new URL(authorHref, "https://vk.ru").pathname);
+    const dateA = anchorOf(postRoot.querySelector('[data-testid="postdateblock_preview"]'));
+    let postUrl = "";
+    if (dateA) {
+      const wm = normalizeHref(dateA.getAttribute("href")).match(RE_WALL);
+      if (wm) postUrl = "wall" + wm[1] + "_" + wm[2];
+    }
+    return {
+      entity: {
+        kind: "POST",
+        type: cls.type,
+        identity: { id: cls.id, url: authorHref },
+        authorName: trim(ownerA.textContent, 60),
+        text: "",
+        navigationTarget: ownerA.getAttribute("href") || "",
+        context: { source: "post", postUrl: postUrl, replyId: "", threadId: "" },
+      },
+      sourceElement: postRoot,
+    };
+  }
+
+  function scan(doc) {
+    const out = [];
+    Array.from(doc.querySelectorAll('a[data-testid="wall_comment_date"]'))
+      .forEach((d) => { const e = extractComment(d); if (e) out.push(e); });
+    Array.from(doc.querySelectorAll('[data-testid="post"]'))
+      .forEach((p) => { const e = extractPost(p); if (e) out.push(e); });
+    return out;
+  }
+
+  globalThis.CTX_VKRU = Object.freeze(
+    { scan: scan, normalizeHref: normalizeHref, classify: classify });
+})();
+
+
++++ EdgeExtension/src/adapters/vkru.js (修改后)
+/* Context VK.RU · adapters/vkru.js · v03f2. Vanilla JS, ноль зависимостей.
+   Все testid и regex с символом подчёркивания собраны через U —
+   в исходнике литеральных подчёркиваний нет (§25 регламента:
+   порче-невозможная передача кода). */
+(function () {
+  "use strict";
+  var U = String.fromCharCode(95);
+  var T_DATE = 'a[data-testid="wall' + U + 'comment' + U + 'date"]';
+  var T_ROOT = '[data-testid="wall' + U + 'comments' + U + 'comment' + U + 'root"],' +
+               '[data-testid="wall' + U + 'comments' + U + 'comment' + U + 'in' + U + 'thread"]';
+  var T_OWNER = '[data-testid="comment-owner"]';
+  var T_TEXT = '[data-testid="comment-text"]';
+  var T_POST = '[data-testid="post"]';
+  var TPOSTHEADER = '[data-testid="post-header"]';
+  var TPOSTTITLE = '[data-testid="post-header-title"]';
+  var RE_PERSON = /^\/id(\d+)$/;
+  var RE_CLUB = /^\/club(\d+)$/;
+  var RE_WALL = new RegExp("^/wall(-?\\d+)" + U + "(\\d+)$");
+
+  function normalizeHref(raw) {
+    if (!raw) return "";
+    var u;
+    try { u = new URL(raw, "https://vk.ru"); } catch (e) { return raw; }
+    if (u.hostname !== "vk.ru" && !u.hostname.endsWith(".vk.ru")) return raw;
+    var keep = [];
+    u.searchParams.forEach(function (v, k) {
+      if (k === "reply" || k === "thread") keep.push(k + "=" + v);
+    });
+    return u.pathname + (keep.length ? "?" + keep.join("&") : "");
+  }
+  function classify(pathname) {
+    var m;
+    if ((m = pathname.match(RE_PERSON))) return { type: "PERSON", id: "id" + m[1] };
+    if ((m = pathname.match(RE_CLUB))) return { type: "COMMUNITY", id: "club" + m[1] };
+    if ((m = pathname.match(RE_WALL)))
+      return { type: m[1][0] === "-" ? "COMMUNITYPOST" : "PERSONPOST",
+               id: "wall" + m[1] + U + m[2] };
+    return { type: "OTHER", id: pathname };
+  }
+  function anchorOf(el) {
+    if (!el) return null;
+    if (el.tagName === "A" && el.getAttribute("href")) return el;
+    return el.querySelector('a[href^="/"], a[href*="vk.ru/"]');
+  }
+  function trim(s, n) {
+    s = (s || "").replace(/\s+/g, " ").trim();
+    return s.length > n ? s.slice(0, n) + "…" : s;
+  }
+  function extractComment(dateAnchor) {
+    var root = dateAnchor.closest(T_ROOT);
+    if (!root) return null;
+    var ownerA = anchorOf(root.querySelector(T_OWNER));
+    var textEl = root.querySelector(T_TEXT);
+    var authorHref = ownerA ? normalizeHref(ownerA.getAttribute("href")) : "";
+    var cls = authorHref
+      ? classify(new URL(authorHref, "https://vk.ru").pathname)
+      : { type: "UNKNOWN", id: "" };
+    var postId = "", replyId = "", threadId = "";
+    try {
+      var u = new URL(normalizeHref(dateAnchor.getAttribute("href")), "https://vk.ru");
+      var wm = u.pathname.match(RE_WALL);
+      if (wm) postId = "wall" + wm[1] + U + wm[2];
+      replyId = u.searchParams.get("reply") || "";
+      threadId = u.searchParams.get("thread") || "";
+    } catch (e) {}
+    return {
+      entity: {
+        kind: "COMMENT", type: cls.type,
+        identity: { id: cls.id, url: authorHref },
+        authorName: trim(ownerA ? ownerA.textContent : "", 60),
+        text: trim(textEl ? textEl.textContent : "", 80),
+        navigationTarget: dateAnchor.getAttribute("href") || "",
+        context: { source: root.getAttribute("data-testid"),
+                   postUrl: postId, replyId: replyId, threadId: threadId }
+      },
+      sourceElement: root
+    };
+  }
+  function extractPost(postRoot) {
+    var header = postRoot.querySelector(TPOSTHEADER);
+    var ownerA =
+      anchorOf(header ? header.querySelector(TPOSTTITLE) : null) ||
+      (header ? header.querySelector('a[href^="/id"], a[href^="/club"]') : null);
+    if (!ownerA) return null;
+    var authorHref = normalizeHref(ownerA.getAttribute("href"));
+    var cls = classify(new URL(authorHref, "https://vk.ru").pathname);
+    var pid = postRoot.getAttribute("data-post-id") || "";
+    return {
+      entity: {
+        kind: "POST", type: cls.type,
+        identity: { id: cls.id, url: authorHref },
+        authorName: trim(ownerA.textContent, 60),
+        text: "",
+        navigationTarget: ownerA.getAttribute("href") || "",
+        context: { source: "post", postUrl: pid ? "wall" + pid : "",
+                   replyId: "", threadId: "" }
+      },
+      sourceElement: postRoot
+    };
+  }
+  function scan(doc) {
+    var out = [];
+    doc.querySelectorAll(T_DATE).forEach(function (d) {
+      var e = extractComment(d); if (e) out.push(e);
+    });
+    doc.querySelectorAll(T_POST).forEach(function (p) {
+      var e = extractPost(p); if (e) out.push(e);
+    });
+    return out;
+  }
+  globalThis.CTX_VKRU = Object.freeze(
+    { scan: scan, normalizeHref: normalizeHref, classify: classify });
+})();
+
+--- EdgeExtension/src/content.js (原始)
+/* Context VK.RU · v_03f · content.js
+ * v_01: сигнал запуска. v_02: PING/PONG (регрессия).
+ * v_03: скан + debounced MutationObserver (600 мс) + дедупликация + отчёт.
+ * v_03f: + coverage-самодиагностика (порча селекторов видна мгновенно,
+ *        без внешних DIAG-пейстов — report_v_03.md).
+ * Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2).
+ */
+(() => {
+  "use strict";
+  if (location.host !== "vk.ru") return;
+  console.log(`[CTX ${CTX_BUILD}] content started — path: ${location.pathname}`);
+
+  /* v_02 регрессия: PING/PONG */
+  const t0 = performance.now();
+  chrome.runtime.sendMessage({ type: CTX_MSG.PING,
+    payload: { path: location.pathname } })
+    .then((r) => { if (r && r.type === CTX_MSG.PONG)
+      console.log(`[CTX ${CTX_BUILD}] PONG (rtt ~${Math.round(performance.now() - t0)} ms)`); })
+    .catch(() => {});
+
+  /* v_03f: coverage-лог при каждом изменении счётчиков.
+   * dates>0 на странице с комментариями = селекторы живы. */
+  let lastCoverage = "";
+  function logCoverage() {
+    const posts = document.querySelectorAll('[data-testid="post"]').length;
+    const dates = document.querySelectorAll('a[data-testid="wall_comment_date"]').length;
+    const roots = document.querySelectorAll(
+      '[data-testid="wallcomments_comment_root"], [data-testid="wallcomments_comment_in_thread"]'
+    ).length;
+    const line = `posts/dates/roots = ${posts}/${dates}/${roots}`;
+    if (line !== lastCoverage) {
+      lastCoverage = line;
+      console.log(`[CTX ${CTX_BUILD}] coverage ${line}`);
+    }
+  }
+
+  /* v_03: обнаружение */
+  const seen = new Set();
+  let timer = 0;
+
+  function keyOf(e) {
+    if (e.kind === "COMMENT")
+      return "C:" + e.context.postUrl + "#" + (e.context.replyId || e.navigationTarget);
+    return "P:" + (e.context.postUrl || e.identity.url);
+  }
+
+  function report(fresh) {
+    if (!fresh.length) return;
+    console.log(`[CTX ${CTX_BUILD}] ENTITY FOUND: ${fresh.length} new`);
+    fresh.forEach((it) => {
+      const e = it.entity;
+      console.log(`[CTX ${CTX_BUILD}] ${e.kind} ${e.type} | author="${e.authorName}"` +
+        ` | id=${e.identity.id} | post=${e.context.postUrl || "-"}` +
+        ` | reply=${e.context.replyId || "-"}` +
+        ` | nav=${e.navigationTarget} | sourceElement:`, it.sourceElement);
+    });
+    chrome.runtime.sendMessage({ type: CTX_MSG.ENTITY_FOUND,
+      payload: { count: fresh.length, entities: fresh.map((i) => i.entity) } })
+      .catch(() => {});
+  }
+
+  function rescan() {
+    logCoverage();
+    if (!globalThis.CTX_VKRU) return;
+    const fresh = [];
+    CTX_VKRU.scan(document).forEach((it) => {
+      const k = keyOf(it.entity);
+      if (!seen.has(k)) { seen.add(k); fresh.push(it); }
+    });
+    report(fresh);
+  }
+
+  rescan();
+  new MutationObserver(() => {
+    clearTimeout(timer);
+    timer = setTimeout(rescan, 600);
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+
+
++++ EdgeExtension/src/content.js (修改后)
+/* Context VK.RU · v03f2 · content.js
+ * v_01: сигнал запуска. v_02: PING/PONG (регрессия).
+ * v_03: скан + debounced MutationObserver (600 мс) + дедупликация + отчёт.
+ * v03f2: coverage-гейт posts/dates/roots; селекторы собраны через
+ * U = String.fromCharCode(95) — в исходнике нет литеральных подчёркиваний
+ * в строках-селекторах (§25 регламента).
+ * Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2).
+ */
+(() => {
+  "use strict";
+  if (location.host !== "vk.ru") return;
+  var U = String.fromCharCode(95);
+  console.log(`[CTX ${CTX_BUILD}] content started — path: ${location.pathname}`);
+
+  /* v_02 регрессия: PING/PONG */
+  const t0 = performance.now();
+  chrome.runtime.sendMessage({ type: CTX_MSG.PING,
+    payload: { path: location.pathname } })
+    .then((r) => { if (r && r.type === CTX_MSG.PONG)
+      console.log(`[CTX ${CTX_BUILD}] PONG (rtt ~${Math.round(performance.now() - t0)} ms)`); })
+    .catch(() => {});
+
+  /* v03f2: обнаружение + coverage-гейт */
+  const seen = new Set();
+  let timer = 0;
+  let lastCov = "";
+
+  function coverage() {
+    const posts = document.querySelectorAll('[data-testid="post"]').length;
+    const dates = document.querySelectorAll(
+      'a[data-testid="wall' + U + 'comment' + U + 'date"]').length;
+    const roots = document.querySelectorAll(
+      '[data-testid="wall' + U + 'comments' + U + 'comment' + U + 'root"],' +
+      '[data-testid="wall' + U + 'comments' + U + 'comment' + U + 'in' + U + 'thread"]').length;
+    const s = posts + "/" + dates + "/" + roots;
+    if (s !== lastCov) { lastCov = s;
+      console.log(`[CTX ${CTX_BUILD}] coverage posts/dates/roots = ${s}`); }
+  }
+
+  function keyOf(e) {
+    if (e.kind === "COMMENT")
+      return "C:" + e.context.postUrl + "#" + (e.context.replyId || e.navigationTarget);
+    return "P:" + (e.context.postUrl || e.identity.url);
+  }
+
+  function report(fresh) {
+    if (!fresh.length) return;
+    console.log(`[CTX ${CTX_BUILD}] ENTITY FOUND: ${fresh.length} new`);
+    fresh.forEach((it) => {
+      const e = it.entity;
+      console.log(`[CTX ${CTX_BUILD}] ${e.kind} ${e.type} | author="${e.authorName}"` +
+        ` | id=${e.identity.id} | post=${e.context.postUrl || "-"}` +
+        ` | reply=${e.context.replyId || "-"}` +
+        ` | nav=${e.navigationTarget} | sourceElement:`, it.sourceElement);
+    });
+    chrome.runtime.sendMessage({ type: CTX_MSG.ENTITY_FOUND,
+      payload: { count: fresh.length,
+                 entities: fresh.map((i) => i.entity) } }).catch(() => {});
+  }
+
+  function rescan() {
+    if (!globalThis.CTX_VKRU) return;
+    coverage();
+    const fresh = [];
+    CTX_VKRU.scan(document).forEach((it) => {
+      const k = keyOf(it.entity);
+      if (!seen.has(k)) { seen.add(k); fresh.push(it); }
+    });
+    report(fresh);
+  }
+
+  rescan();
+  new MutationObserver(() => {
+    clearTimeout(timer);
+    timer = setTimeout(rescan, 600);
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+
+--- EdgeExtension/src/core/messaging.js (原始)
+/* Context VK.RU · core/messaging.js · v_03f
+ * Общие константы сообщений (MV3 message passing).
+ *
+ * v_02: PING/PONG. v_03: + ENTITY_FOUND.
+ * v_03f: фикс после FAIL v_03 — версия сборки; типы сообщений без изменений.
+ *
+ * Подключение: в content-скрипты — манифестом, ПЕРЕД остальными файлами;
+ * в Service Worker — importScripts("./core/messaging.js").
+ * Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2).
+ */
+
+const CTX_BUILD = "v_03f";
+
+const CTX_MSG = Object.freeze({
+  PING: "ctx:ping",
+  PONG: "ctx:pong",
+  ENTITY_FOUND: "ctx:entity-found",
+});
+
+globalThis.CTX_BUILD = CTX_BUILD;
+globalThis.CTX_MSG = CTX_MSG;
+
+
++++ EdgeExtension/src/core/messaging.js (修改后)
+/* Context VK.RU · core/messaging.js · v03f2
+ * Общие константы сообщений (MV3 message passing).
+ *
+ * v_02: PING/PONG. v_03: + ENTITY_FOUND.
+ * v03f2: номер сборки; имена констант и типы сообщений БЕЗ ИЗМЕНЕНИЙ
+ * (background.js не меняется — совместимость обязательна).
+ *
+ * Подключение: в content-скрипты — манифестом, ПЕРЕД остальными файлами;
+ * в Service Worker — importScripts("./core/messaging.js").
+ * Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2).
+ */
+
+const CTX_BUILD = "v03f2";
+
+const CTX_MSG = Object.freeze({
+  PING: "ctx:ping",
+  PONG: "ctx:pong",
+  ENTITY_FOUND: "ctx:entity-found",
+});
+
+globalThis.CTX_BUILD = CTX_BUILD;
+globalThis.CTX_MSG = CTX_MSG;
+
+--- index.html (原始)
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>context-vkru · фикс v_03f · репо-гейт</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800;900&family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+
++++ index.html (修改后)
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>context-vkru · v03f2 · порче-невозможная реализация</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800;900&family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+--- src/App.tsx (原始)
+import { useState } from "react";
+import Reveal from "./components/Reveal";
+import Terminal from "./components/Terminal";
+import ScoreRing from "./components/ScoreRing";
+import ConformanceMatrix from "./components/ConformanceMatrix";
+import Roadmap from "./components/Roadmap";
+import Steps from "./components/Steps";
+import V01Sheet, { type Verdict } from "./components/V01Sheet";
+import V02Sheet from "./components/V02Sheet";
+import V03Sheet from "./components/V03Sheet";
+import {
+  counts,
+  stages,
+  stackLocal,
+  stackTarget,
+  templateFiles,
+  entityContract,
+  entityNotes,
+} from "./data/audit";
+import {
+  evidenceRows,
+  verbatimSelectors,
+  processRules,
+  fixFiles,
+  scenarios,
+  passCriteria,
+} from "./data/v03f";
+
+const DOC_ARCH =
+  "https://github.com/alex-6675/context-vkru/blob/main/docs/architecture.md";
+const DOC_REG =
+  "https://github.com/alex-6675/context-vkru/blob/main/docs/%D0%A0%D0%95%D0%93%D0%9B%D0%90%D0%9C%D0%95%D0%9D%D0%A2_%D0%A0%D0%90%D0%91%D0%9E%D0%A2_v2_0.md";
+const DOC_REPORT =
+  "https://github.com/alex-6675/context-vkru/blob/main-qwen_v_03/reports/v_03/report_v_03.md";
+
+const VERDICT_KEY = "ctxvkru-verdict-v03";
+
+const extensionFiles = [
+  "EdgeExtension/manifest.json",
+  "EdgeExtension/src/core/messaging.js",
+  "EdgeExtension/src/adapters/vkru.js",
+  "EdgeExtension/src/background.js",
+  "EdgeExtension/src/content.js",
+  "reports/v_03/report_v_03.md",
+  "reports/v_03/BUILD_v_03f.md",
+  "reports/v_03/TEST_v_03f.md",
+  "reports/v_03/RESULT_v_03.md",
+  "scripts/Build.ps1",
+  "scripts/Clean.ps1",
+  "scripts/Test.ps1",
+];
+
+/* ---------- мелкие svg-иконки ---------- */
+
+const IconX = () => (
+  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="shrink-0">
+    <path d="M2.5 2.5l7 7m0-7l-7 7" stroke="var(--color-fail)" strokeWidth="1.7" strokeLinecap="round" />
+  </svg>
+);
+
+const IconCheck = () => (
+  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="shrink-0">
+    <path d="M2 6.2L4.8 9L10 3.4" stroke="var(--color-pass)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const IconExt = () => (
+  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="inline-block">
+    <path d="M4.5 2H2v8h8V7.5M7 2h3v3M10 2L5.5 6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+function SectionHead({
+  num,
+  title,
+  sub,
+}: {
+  num: string;
+  title: string;
+  sub: string;
+}) {
+  return (
+    <Reveal className="mb-8">
+      <div className="flex items-baseline gap-4">
+        <span className="font-mono text-[13px] font-bold text-steel">{num}</span>
+        <h2 className="font-display text-xl font-extrabold uppercase tracking-[0.08em] text-ink sm:text-2xl">
+          {title}
+        </h2>
+      </div>
+      <p className="mt-2 max-w-3xl text-[14px] leading-relaxed text-dim sm:pl-[52px]">
+        {sub}
+      </p>
+      <div className="mt-4 h-px w-full bg-gradient-to-r from-line2 via-line to-transparent" />
+    </Reveal>
+  );
+}
+
+/* ---------- приложение ---------- */
+
+export default function App() {
+  const [verdict, setVerdictState] = useState<Verdict>(() => {
+    try {
+      const raw = localStorage.getItem(VERDICT_KEY);
+      if (raw === "pass" || raw === "fail") return raw;
+    } catch {
+      /* приватный режим */
+    }
+    return null;
+  });
+
+  const setVerdict = (v: Verdict) => {
+    setVerdictState(v);
+    try {
+      if (v) localStorage.setItem(VERDICT_KEY, v);
+      else localStorage.removeItem(VERDICT_KEY);
+    } catch {
+      /* приватный режим */
+    }
+  };
+
+  const statusChip =
+    verdict === "pass"
+      ? { cls: "border-pass/50 bg-pass/10 text-pass", dot: "bg-pass", label: "v_03 · PASS (fix)" }
+      : { cls: "border-warn/50 bg-warn/10 text-warn", dot: "bg-warn", label: "v_03f · РЕПО-ГЕЙТ" };
+
+  return (
+    <div className="relative min-h-screen font-body text-ink">
+      {/* фоновые слои */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-glow" />
+        <div className="absolute inset-0 bg-grid" />
+        <div className="absolute inset-0 noise" />
+      </div>
+
+      <div className="relative z-10">
+        {/* верхняя панель */}
+        <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur-sm">
+          <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center border border-steel/50 bg-steel/10">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 2L12.5 11H1.5L7 2Z" stroke="var(--color-steel)" strokeWidth="1.5" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <div className="leading-tight">
+                <p className="font-mono text-[12px] font-bold tracking-wide text-ink">
+                  context-vkru
+                </p>
+                <p className="font-mono text-[10px] tracking-wider text-faint">
+                  Edge-расширение для vk.ru · Manifest V3
+                </p>
+              </div>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <span className="hidden items-center gap-1.5 border border-pass/40 bg-pass/[0.07] px-2.5 py-1.5 font-mono text-[10px] font-bold tracking-wider text-pass/80 lg:flex">
+                v_01 PASS
+              </span>
+              <span className="hidden items-center gap-1.5 border border-pass/40 bg-pass/[0.07] px-2.5 py-1.5 font-mono text-[10px] font-bold tracking-wider text-pass/80 md:flex">
+                v_02 PASS
+              </span>
+              <a
+                href={DOC_REPORT}
+                target="_blank"
+                rel="noreferrer"
+                className="filter-btn hidden items-center gap-1.5 border border-line bg-panel px-3 py-1.5 font-mono text-[10.5px] tracking-wide text-dim hover:border-steel hover:text-ink lg:flex"
+              >
+                report_v_03.md <IconExt />
+              </a>
+              <span
+                className={`flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[10.5px] font-bold tracking-wider ${statusChip.cls}`}
+              >
+                <span className={`blink-soft h-1.5 w-1.5 rounded-full ${statusChip.dot}`} />
+                {statusChip.label}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {/* заголовок + терминал */}
+        <section className="mx-auto max-w-6xl px-5 pb-10 pt-10 sm:pt-14">
+          <div className="grid items-start gap-8 lg:grid-cols-[1.08fr_1fr] lg:gap-10">
+            <div>
+              <Reveal>
+                <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-steel">
+                  Анализ разработчика принят · ветка main-qwen_v_03
+                </p>
+                <h1 className="mt-4 font-display text-[clamp(1.9rem,4.6vw,3.3rem)] font-extrabold leading-[1.08] tracking-tight text-ink">
+                  <span className="text-fail">v_03 — FAIL (частичный).</span>
+                  <br />
+                  <span className={verdict === "pass" ? "text-pass" : "text-steel"}>
+                    {verdict === "pass" ? "Фикс принят — курс на M-04." : "Фикс v_03f применён."}
+                  </span>
+                </h1>
+                <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-dim">
+                  Причина найдена, и она <span className="text-ink">системная, не архитектурная</span>:
+                  дефект передачи кода — markdown-рендер съел подчёркивания при копировании из чата,
+                  поэтому в проде селекторы с дефисами работали, а с подчёркиваниями — нет.
+                  Применён <span className="font-mono text-[13px] text-ink">M-03-fix / v_03f (0.0.4)</span>:
+                  verbatim-селекторы зафиксированы, в content.js добавлена{" "}
+                  <span className="font-mono text-[12.5px] text-steel">coverage-самодиагностика</span>,
+                  введён <span className="font-mono text-[12.5px] text-warn">РЕПО-ГЕЙТ</span> — код
+                  передаётся только закоммиченным файлом, raw верифицируется проектировщиком до теста.
+                </p>
+              </Reveal>
+
+              <Reveal delay={120}>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <span className="border border-pass/40 bg-pass/[0.07] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-pass/90">
+                    v_01 PASS · v_02 PASS
+                  </span>
+                  <span
+                    className={`border px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider ${
+                      verdict === "pass"
+                        ? "border-pass/50 bg-pass/10 text-pass"
+                        : "border-fail/50 bg-fail/10 text-fail"
+                    }`}
+                  >
+                    {verdict === "pass" ? "v_03f · PASS зафиксирован" : "v_03 · FAIL (частичный)"}
+                  </span>
+                  <span className="border border-steel/50 bg-steel/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-steel">
+                    {verdict === "pass" ? "M-04 выдаёт проектировщик" : "v_03f · ждёт raw-верификации"}
+                  </span>
+                </div>
+              </Reveal>
+
+              <Reveal delay={200}>
+                <div className="mt-7 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-pass/80">
+                      Пакет · v_03f на диске (готов к коммиту)
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {extensionFiles.map((f) => (
+                        <span
+                          key={f}
+                          className="border border-pass/25 bg-pass/[0.06] px-2.5 py-1 font-mono text-[11px] text-dim transition-colors hover:border-pass/50 hover:text-ink"
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
+                      Шаблон · вне пакета (§2.2)
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {templateFiles.map((f) => (
+                        <span
+                          key={f}
+                          className="border border-line bg-inset px-2.5 py-1 font-mono text-[11px] text-faint transition-colors hover:border-line2 hover:text-dim"
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-2.5 text-[12.5px] leading-relaxed text-faint">
+                      Сборки нет — plain MV3. Node нужен лишь для этого рабочего листа
+                      (<span className="font-mono text-[11.5px] text-dim">.nvmrc</span> → Node 22 LTS).
+                    </p>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+
+            <Reveal delay={150}>
+              <Terminal />
+            </Reveal>
+          </div>
+
+          {/* сводная полоса */}
+          <Reveal delay={100}>
+            <div className="mt-12 grid grid-cols-2 gap-px border border-line bg-line lg:grid-cols-4">
+              <div className="flex items-center gap-5 bg-panel px-5 py-5">
+                <ScoreRing size={104} />
+                <div className="font-mono text-[11.5px] leading-relaxed text-dim">
+                  <p><span className="font-bold text-pass">{counts.pass} PASS</span></p>
+                  <p><span className="font-bold text-warn">{counts.warn} WARN</span></p>
+                  <p><span className="font-bold text-fail">{counts.fail} FAIL</span></p>
+                </div>
+              </div>
+
+              <div className="bg-panel px-5 py-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+                  Подтверждённые сборки
+                </p>
+                <p className="mt-2 font-display text-3xl font-extrabold text-ink">
+                  {verdict === "pass" ? 3 : 2}
+                  <span className="text-lg text-faint"> / {stages.length}</span>
+                </p>
+                <div className="mt-3 h-1 overflow-hidden rounded-full bg-line">
+                  <div
+                    className={`progress-fill h-full rounded-full ${verdict === "pass" ? "w-[20%] bg-pass" : "w-[13%] bg-fail"}`}
+                  />
+                </div>
+                <p className="mt-1.5 text-[12px] text-dim">
+                  v_01 ✓ · v_02 ✓ · v_03 {verdict === "pass" ? "PASS (fix)" : "FAIL → v_03f"}
+                </p>
+              </div>
+
+              <div className="bg-panel px-5 py-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+                  Пакет расширения
+                </p>
+                <p className="mt-2 font-display text-3xl font-extrabold text-ink">
+                  0.0.4<span className="text-lg text-faint"> · MV3</span>
+                </p>
+                <p className="mt-1.5 text-[12px] leading-snug text-dim">
+                  v_03f: verbatim-селекторы + coverage posts/dates/roots
+                </p>
+              </div>
+
+              <div className="bg-panel px-5 py-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Режим процесса</p>
+                <p className="mt-2 font-display text-[15px] font-bold leading-snug text-warn">
+                  РЕПО-ГЕЙТ: коммит → raw-верификация → тест
+                </p>
+                <p className="mt-1.5 text-[12px] leading-snug text-dim">
+                  Пользователь не тестирует P1–P4 до подтверждения проектировщика (report_v_03.md)
+                </p>
+              </div>
+            </div>
+          </Reveal>
+        </section>
+
+        {/* 01 — фикс v_03f */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="01"
+            title="Фикс v_03f — причина и меры"
+            sub="Анализ разработчика из report_v_03.md принят дословно. Доказательная база, корень причины, verbatim-контракт селекторов, процедурные решения и сценарии P1–P4 для проверки после РЕПО-ГЕЙТа."
+          />
+
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+            {/* левая колонка */}
+            <div className="space-y-6">
+              <Reveal>
+                <div className="cornered border border-line bg-panel/70 p-5 sm:p-6">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="font-display text-[15px] font-semibold text-ink">
+                      Доказательная база (прод)
+                    </h3>
+                    <span className="border border-fail/50 bg-fail/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-widest text-fail">
+                      FAIL частичный
+                    </span>
+                  </div>
+                  <div className="mt-4 space-y-2.5">
+                    {evidenceRows.map((r) => (
+                      <div
+                        key={r.sel}
+                        className={`border px-4 py-3 transition-colors ${
+                          r.works
+                            ? "border-pass/30 bg-pass/[0.05] hover:border-pass/60"
+                            : "border-fail/30 bg-fail/[0.05] hover:border-fail/60"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <code className="font-mono text-[12px] font-bold text-ink">{r.sel}</code>
+                          <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+                            разделитель: {r.sep}
+                          </span>
+                          <span
+                            className={`ml-auto border px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider ${
+                              r.works
+                                ? "border-pass/50 bg-pass/10 text-pass"
+                                : "border-fail/50 bg-fail/10 text-fail"
+                            }`}
+                          >
+                            {r.works ? "работает" : "не работает"}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">{r.evidence}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 border-l-2 border-warn bg-warn/[0.06] px-4 py-3">
+                    <p className="font-mono text-[10.5px] font-bold uppercase tracking-[0.18em] text-warn">
+                      Корень причины
+                    </p>
+                    <p className="mt-1 text-[13px] leading-relaxed text-dim">
+                      Подчёркивания съедены markdown-рендером при копировании из чата
+                      (<span className="font-mono text-[11.5px] text-fail">wall_comment_date → wallcommentdate</span>).
+                      Дефект передачи кода, а не архитектуры: сами селекторы CONFIRMED диагностикой 3A.
+                    </p>
+                  </div>
+                </div>
+              </Reveal>
+
+              <Reveal delay={80}>
+                <div className="cornered border border-line bg-inset/90 p-5 sm:p-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-display text-[15px] font-semibold text-ink">
+                      Verbatim-контракт селекторов
+                    </h3>
+                    <span className="font-mono text-[10px] text-faint">BUILD_v_03f.md</span>
+                  </div>
+                  <div className="mt-3.5 flex flex-wrap gap-1.5">
+                    {verbatimSelectors.map((s) => {
+                      const hasUnderscore = s.includes("_");
+                      return (
+                        <span
+                          key={s}
+                          className={`border px-2.5 py-1.5 font-mono text-[11.5px] transition-all hover:-translate-y-0.5 ${
+                            hasUnderscore
+                              ? "border-warn/50 bg-warn/10 text-warn"
+                              : "border-pass/40 bg-pass/[0.07] text-pass/90"
+                          }`}
+                        >
+                          {s}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-3 text-[12px] leading-relaxed text-faint">
+                    Жёлтым — селекторы с подчёркиваниями (группа риска при передаче через рендер-канал).
+                    В локальном <span className="font-mono text-[11px] text-dim">vkru.js</span> все литералы
+                    уже истинные: файл писали напрямую, минуя чат. Логика адаптера в фиксе не тронута.
+                  </p>
+                </div>
+              </Reveal>
+
+              <Reveal delay={120}>
+                <div className="border border-line bg-panel/70 p-5">
+                  <h3 className="font-display text-[15px] font-semibold text-ink">
+                    Процедурные решения (фиксация в процесс)
+                  </h3>
+                  <div className="mt-3.5 space-y-3">
+                    {processRules.map((r, i) => (
+                      <div key={r.t} className="flex gap-3.5">
+                        <span className="mt-px flex h-6 w-6 shrink-0 items-center justify-center border border-warn/50 bg-warn/10 font-mono text-[11px] font-bold text-warn">
+                          {i + 1}
+                        </span>
+                        <div>
+                          <p className="font-mono text-[12.5px] font-bold uppercase tracking-wide text-ink">
+                            {r.t}
+                          </p>
+                          <p className="mt-0.5 text-[12.5px] leading-relaxed text-dim">{r.d}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+
+            {/* правая колонка */}
+            <div className="space-y-6">
+              <Reveal delay={60}>
+                <div className="border border-line bg-panel/70 p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-display text-[15px] font-semibold text-ink">
+                      Изменённые файлы · 0.0.4
+                    </h3>
+                    <span className="border border-steel/40 bg-steel/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-steel">
+                      v_03f
+                    </span>
+                  </div>
+                  <ul className="mt-3.5 space-y-2">
+                    {fixFiles.map((f) => (
+                      <li
+                        key={f.path}
+                        className="group border border-line/70 bg-inset/60 px-3.5 py-2.5 transition-colors hover:border-line2 hover:bg-inset"
+                      >
+                        <p className="font-mono text-[12px] font-bold text-ink">
+                          EdgeExtension/{f.path}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[10.5px] text-faint">{f.note}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Reveal>
+
+              <Reveal delay={100}>
+                <div className="border border-warn/40 bg-warn/[0.06] p-5">
+                  <h3 className="font-display text-[15px] font-semibold text-warn">
+                    РЕПО-ГЕЙТ · порядок действий
+                  </h3>
+                  <div className="mt-3.5">
+                    {[
+                      { t: "Coder коммитит EdgeExtension/ в main-qwen_v_03", s: "файлы фиксации уже на диске — ждут коммита" },
+                      { t: "Ссылка на коммит — проектировщику", s: "он читает raw vkru.js / content.js на GitHub" },
+                      { t: "Верификация целостности селекторов", s: "raw-источник, не рендер-вью; сверка с verbatim-списком" },
+                      { t: "Только затем пользователь тестирует P1–P4", s: "Reload → 0.0.4 → F5 на vk.ru" },
+                    ].map((st, i, arr) => (
+                      <div key={st.t}>
+                        <div className="flex items-center gap-4">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center border border-warn/50 bg-warn/10 font-mono text-[11px] font-bold text-warn">
+                            {i + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-semibold leading-snug text-ink">{st.t}</p>
+                            <p className="mt-0.5 font-mono text-[10.5px] leading-snug text-faint">{st.s}</p>
+                          </div>
+                        </div>
+                        {i < arr.length - 1 && (
+                          <div className="ml-4 h-4 border-l border-dashed border-warn/40" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Reveal>
+
+              <Reveal delay={140}>
+                <div className="border border-line bg-panel/70 p-5">
+                  <h3 className="font-display text-[15px] font-semibold text-ink">
+                    Сценарии P1–P4 (TEST_v_03f.md)
+                  </h3>
+                  <div className="mt-3.5 space-y-3">
+                    {scenarios.map((sc) => (
+                      <div
+                        key={sc.id}
+                        className="group border border-line/70 px-3.5 py-3 transition-all hover:border-steel/50 hover:bg-steel/[0.04]"
+                      >
+                        <div className="flex items-baseline gap-3">
+                          <span className="font-mono text-[12px] font-bold text-steel">{sc.id}</span>
+                          <p className="font-mono text-[12px] text-ink">{sc.page}</p>
+                        </div>
+                        <ul className="mt-1.5 space-y-1 pl-[37px]">
+                          {sc.expect.map((e) => (
+                            <li key={e} className="flex gap-2 text-[12px] leading-relaxed text-dim">
+                              <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-steel/70" />
+                              {e}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3.5 font-mono text-[10px] uppercase tracking-[0.18em] text-pass/80">
+                    PASS-критерии
+                  </p>
+                  <ul className="mt-1.5 space-y-1.5">
+                    {passCriteria.map((p) => (
+                      <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                        <IconCheck />
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        {/* 02 — шаг 3 / v_03 */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="02"
+            title="Шаг 3 · v_03 — VK.RU Adapter: обнаружение"
+            sub="Рабочий лист сборки по заданию docs/3A.md: итоговая таблица признаков 3A, конвейер обнаружения, листинги пакета, критерии TEST.md. Итоговый вердикт (по fix) фиксируется в RESULT_v_03.md после P1–P4."
+          />
+          <V03Sheet verdict={verdict} setVerdict={setVerdict} />
+        </section>
+
+        {/* 03 — шаг 2 / v_02 (закрыт) */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="03"
+            title="Шаг 2 · v_02 — диагностический канал · закрыт"
+            sub="Историческая сборка: PING/PONG между content.js и Service Worker. Закрыта вердиктом PASS (RESULT_v_02.md, 19.08.2026); канал сохранён в v_03f как регрессия."
+          />
+          <V02Sheet verdict="pass" setVerdict={() => undefined} locked />
+        </section>
+
+        {/* 04 — шаг 1 / v_01 (закрыт) */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="04"
+            title="Шаг 1 · v_01 — контрольный каркас · закрыт"
+            sub="Историческая сборка: минимальный MV3-манифест, Service Worker и content script. Закрыта вердиктом PASS (RESULT_v_01.md, 18.08.2026); листинги оставлены для протокола."
+          />
+          <V01Sheet verdict="pass" setVerdict={() => undefined} locked />
+        </section>
+
+        {/* 05 — дорожная карта */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="05"
+            title="Дорожная карта v_01 — v_15"
+            sub="Часть 6 регламента: строго последовательно, один модуль — одна тестовая сборка. v_01 и v_02 зелёные (PASS), v_03 в итерации фикса v_03f; клик раскрывает цель и PASS-критерий."
+          />
+          <Roadmap />
+        </section>
+
+        {/* 06 — матрица */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="06"
+            title="Сверка с architecture.md"
+            sub={`Постатейная проверка: границы и стек (§B), компоненты (§D), контракт ENTITY (§E), идентификация (§F–I), сценарий ПКМ (§J), отказ от legacy (§K), структура каталогов (§L). Всего ${counts.total} пунктов. Бейдж «файл · v_XX» — артефакт создан в соответствующей сборке, полная функция приходит по плану.`}
+          />
+          <ConformanceMatrix />
+        </section>
+
+        {/* 07 — контракт */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="07"
+            title="Контракт ENTITY"
+            sub="Часть 3 регламента: структура заморожена, компоненты обмениваются только ею. Полевые правила — что можно считать ключом, а что запрещено трогать; вопрос §F закрыт диагностикой 3A."
+          />
+          <div className="grid gap-5 lg:grid-cols-[1.15fr_1fr]">
+            <Reveal>
+              <div className="cornered h-full border border-line bg-inset/90">
+                <div className="flex items-center justify-between border-b border-line px-5 py-2.5">
+                  <span className="font-mono text-[11px] tracking-wider text-faint">
+                    entity.contract · зафиксирован
+                  </span>
+                  <span className="border border-warn/40 bg-warn/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider text-warn">
+                    не менять без согласования
+                  </span>
+                </div>
+                <pre className="overflow-x-auto px-5 py-4 font-mono text-[12px] leading-[1.8] text-dim">
+                  {entityContract}
+                </pre>
+              </div>
+            </Reveal>
+            <div className="space-y-3">
+              {entityNotes.map((n, i) => (
+                <Reveal key={n.field} delay={i * 80}>
+                  <div className="req-row group border border-line bg-panel/70 px-4 py-3.5 transition-all hover:bg-panel" data-status="warn">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-mono text-[12px] font-bold text-ink">{n.field}</p>
+                      <span className="font-mono text-[10px] tracking-wider text-steel">{n.doc}</span>
+                    </div>
+                    <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">{n.rule}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 08 — стек */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="08"
+            title="Конфликт стека — решён разведением корней"
+            sub="Единственный WARN аудита (§2.2): шаблон собран на том, что регламент запрещает внутри расширения. Пакет EdgeExtension/ пишется на Vanilla JS с нулём зависимостей — шаблон остаётся снаружи."
+          />
+          <div className="grid gap-5 md:grid-cols-2">
+            <Reveal>
+              <div className="cornered h-full border border-fail/30 bg-panel/80 p-5 sm:p-6">
+                <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-fail">
+                  Как было · package.json
+                </p>
+                <h3 className="mt-1.5 font-display text-[16px] font-bold text-ink">
+                  Vite-шаблон с фреймворками
+                </h3>
+                <ul className="mt-4 space-y-2.5">
+                  {stackLocal.map((s) => (
+                    <li key={s} className="flex items-center gap-3 text-[13.5px] text-dim">
+                      <IconX />
+                      <span className="font-mono text-[12.5px]">{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+            <Reveal delay={120}>
+              <div className="cornered h-full border border-pass/30 bg-panel/80 p-5 sm:p-6">
+                <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-pass">
+                  Как надо · РЕГЛАМЕНТ §2.2
+                </p>
+                <h3 className="mt-1.5 font-display text-[16px] font-bold text-ink">
+                  Vanilla JS + нативные API браузера
+                </h3>
+                <ul className="mt-4 space-y-2.5">
+                  {stackTarget.map((s) => (
+                    <li key={s} className="flex items-center gap-3 text-[13.5px] text-dim">
+                      <IconCheck />
+                      <span className="font-mono text-[12.5px]">{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* 09 — чек-лист */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="09"
+            title="Чек-лист запуска"
+            sub="Семь шагов старта проекта. Прогресс сохраняется локально; справа — шаблон задания M-01 по форме §7 как эталон формата для всех следующих модулей."
+          />
+          <Steps />
+        </section>
+
+        {/* финал */}
+        <footer className="border-t border-line">
+          <div className="mx-auto max-w-6xl px-5 py-14">
+            <Reveal>
+              <div className="flex flex-col items-start gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="font-display text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+                    СТОП<span className="text-fail">.</span>
+                  </p>
+                  <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-dim">
+                    {verdict === "pass"
+                      ? "RESULT_v_03.md (по fix) зафиксирован: v_03f = PASS. По report_v_03.md следующий модуль — M-04 (Navigation Target, отдельный контрольный этап); выдача — за проектировщиком."
+                      : "Фикс v_03f реализован. Дальше — РЕПО-ГЕЙТ: закоммитьте EdgeExtension/ и reports/v_03/ в main-qwen_v_03 и отправьте ссылку на коммит проектировщику. Тест P1–P4 — только после его raw-верификации; вердикт устанавливает Пользователь (§5.6)."}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 font-mono text-[11.5px] text-faint">
+                  <a href={DOC_ARCH} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-ink">
+                    docs/architecture.md <IconExt />
+                  </a>
+                  <a href={DOC_REG} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-ink">
+                    docs/РЕГЛАМЕНТ_РАБОТ_v2_0.md <IconExt />
+                  </a>
+                  <a href={DOC_REPORT} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-ink">
+                    reports/v_03/report_v_03.md <IconExt />
+                  </a>
+                  <span className="mt-1 text-line2">—</span>
+                  <span>
+                    v_01 PASS · v_02 PASS · v_03: {verdict === "pass" ? "PASS (fix)" : "FAIL → v_03f · РЕПО-ГЕЙТ"}
+                  </span>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+
++++ src/App.tsx (修改后)
+import { useState } from "react";
+import Reveal from "./components/Reveal";
+import Terminal from "./components/Terminal";
+import ScoreRing from "./components/ScoreRing";
+import ConformanceMatrix from "./components/ConformanceMatrix";
+import Roadmap from "./components/Roadmap";
+import Steps from "./components/Steps";
+import V01Sheet, { type Verdict } from "./components/V01Sheet";
+import V02Sheet from "./components/V02Sheet";
+import V03Sheet from "./components/V03Sheet";
+import V03F2Section from "./components/V03F2Section";
+import {
+  counts,
+  stages,
+  stackLocal,
+  stackTarget,
+  templateFiles,
+  entityContract,
+  entityNotes,
+} from "./data/audit";
+import {
+  evidenceRows,
+  verbatimSelectors,
+  processRules,
+  fixFiles,
+  scenarios,
+  passCriteria,
+} from "./data/v03f";
+
+const DOC_ARCH =
+  "https://github.com/alex-6675/context-vkru/blob/main/docs/architecture.md";
+const DOC_REG =
+  "https://github.com/alex-6675/context-vkru/blob/main/docs/%D0%A0%D0%95%D0%93%D0%9B%D0%90%D0%9C%D0%95%D0%9D%D0%A2_%D0%A0%D0%90%D0%91%D0%9E%D0%A2_v2_0.md";
+const DOC_REPORT_F2 =
+  "https://github.com/alex-6675/context-vkru/blob/main-qwen_v_03/reports/v_03/report_v_03_f_fix.md";
+
+const VERDICT_KEY = "ctxvkru-verdict-v03";
+
+const extensionFiles = [
+  "EdgeExtension/manifest.json",
+  "EdgeExtension/src/core/messaging.js",
+  "EdgeExtension/src/adapters/vkru.js",
+  "EdgeExtension/src/background.js",
+  "EdgeExtension/src/content.js",
+  "reports/v_03/report_v_03_f_fix.md",
+  "reports/v_03/BUILD_v03f2.md",
+  "reports/v_03/TEST_v03f2.md",
+  "reports/v_03/RESULT_v_03.md",
+  "scripts/Build.ps1",
+  "scripts/Clean.ps1",
+  "scripts/Test.ps1",
+];
+
+/* ---------- мелкие svg-иконки ---------- */
+
+const IconX = () => (
+  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="shrink-0">
+    <path d="M2.5 2.5l7 7m0-7l-7 7" stroke="var(--color-fail)" strokeWidth="1.7" strokeLinecap="round" />
+  </svg>
+);
+
+const IconCheck = () => (
+  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="shrink-0">
+    <path d="M2 6.2L4.8 9L10 3.4" stroke="var(--color-pass)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const IconExt = () => (
+  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="inline-block">
+    <path d="M4.5 2H2v8h8V7.5M7 2h3v3M10 2L5.5 6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+function SectionHead({
+  num,
+  title,
+  sub,
+}: {
+  num: string;
+  title: string;
+  sub: string;
+}) {
+  return (
+    <Reveal className="mb-8">
+      <div className="flex items-baseline gap-4">
+        <span className="font-mono text-[13px] font-bold text-steel">{num}</span>
+        <h2 className="font-display text-xl font-extrabold uppercase tracking-[0.08em] text-ink sm:text-2xl">
+          {title}
+        </h2>
+      </div>
+      <p className="mt-2 max-w-3xl text-[14px] leading-relaxed text-dim sm:pl-[52px]">
+        {sub}
+      </p>
+      <div className="mt-4 h-px w-full bg-gradient-to-r from-line2 via-line to-transparent" />
+    </Reveal>
+  );
+}
+
+/* ---------- приложение ---------- */
+
+export default function App() {
+  const [verdict, setVerdictState] = useState<Verdict>(() => {
+    try {
+      const raw = localStorage.getItem(VERDICT_KEY);
+      if (raw === "pass" || raw === "fail") return raw;
+    } catch {
+      /* приватный режим */
+    }
+    return null;
+  });
+
+  const setVerdict = (v: Verdict) => {
+    setVerdictState(v);
+    try {
+      if (v) localStorage.setItem(VERDICT_KEY, v);
+      else localStorage.removeItem(VERDICT_KEY);
+    } catch {
+      /* приватный режим */
+    }
+  };
+
+  const statusChip =
+    verdict === "pass"
+      ? { cls: "border-pass/50 bg-pass/10 text-pass", dot: "bg-pass", label: "v_03 · PASS (fix2)" }
+      : { cls: "border-warn/50 bg-warn/10 text-warn", dot: "bg-warn", label: "v03f2 · ждёт гейта" };
+
+  return (
+    <div className="relative min-h-screen font-body text-ink">
+      {/* фоновые слои */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-glow" />
+        <div className="absolute inset-0 bg-grid" />
+        <div className="absolute inset-0 noise" />
+      </div>
+
+      <div className="relative z-10">
+        {/* верхняя панель */}
+        <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur-sm">
+          <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center border border-steel/50 bg-steel/10">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 2L12.5 11H1.5L7 2Z" stroke="var(--color-steel)" strokeWidth="1.5" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <div className="leading-tight">
+                <p className="font-mono text-[12px] font-bold tracking-wide text-ink">
+                  context-vkru
+                </p>
+                <p className="font-mono text-[10px] tracking-wider text-faint">
+                  Edge-расширение для vk.ru · Manifest V3
+                </p>
+              </div>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <span className="hidden items-center gap-1.5 border border-pass/40 bg-pass/[0.07] px-2.5 py-1.5 font-mono text-[10px] font-bold tracking-wider text-pass/80 lg:flex">
+                v_01 PASS
+              </span>
+              <span className="hidden items-center gap-1.5 border border-pass/40 bg-pass/[0.07] px-2.5 py-1.5 font-mono text-[10px] font-bold tracking-wider text-pass/80 md:flex">
+                v_02 PASS
+              </span>
+              <a
+                href={DOC_REPORT_F2}
+                target="_blank"
+                rel="noreferrer"
+                className="filter-btn hidden items-center gap-1.5 border border-line bg-panel px-3 py-1.5 font-mono text-[10.5px] tracking-wide text-dim hover:border-steel hover:text-ink lg:flex"
+              >
+                report_v_03_f_fix.md <IconExt />
+              </a>
+              <span
+                className={`flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[10.5px] font-bold tracking-wider ${statusChip.cls}`}
+              >
+                <span className={`blink-soft h-1.5 w-1.5 rounded-full ${statusChip.dot}`} />
+                {statusChip.label}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {/* заголовок + терминал */}
+        <section className="mx-auto max-w-6xl px-5 pb-10 pt-10 sm:pt-14">
+          <div className="grid items-start gap-8 lg:grid-cols-[1.08fr_1fr] lg:gap-10">
+            <div>
+              <Reveal>
+                <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-steel">
+                  M-03-fix2 · v03f2 · по report_v_03_f_fix.md
+                </p>
+                <h1 className="mt-4 font-display text-[clamp(1.9rem,4.6vw,3.3rem)] font-extrabold leading-[1.08] tracking-tight text-ink">
+                  <span className="text-fail">3C: прод был повреждён.</span>
+                  <br />
+                  <span className={verdict === "pass" ? "text-pass" : "text-steel"}>
+                    {verdict === "pass"
+                      ? "И v_03 закрыт — PASS (fix2)."
+                      : "Теперь код нельзя повредить."}
+                  </span>
+                </h1>
+                <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-dim">
+                  Замер 3C на /feed: ground truth <span className="font-mono text-[12.5px] text-ink">168</span> дат
+                  и <span className="font-mono text-[12.5px] text-ink">168</span> корней; coverage расширения —{" "}
+                  <span className="font-mono text-[12.5px] text-pass">dates=168</span> /{" "}
+                  <span className="font-mono text-[12.5px] text-fail">roots=0</span>. Архитектура 3A здорова —
+                  съедены подчёркивания при передаче кода. Лечение по заданию: все testid и regex собираются
+                  через <span className="font-mono text-[12.5px] text-steel">U = String.fromCharCode(95)</span> —
+                  в исходнике физически нет подчёркиваний; посты переведены на{" "}
+                  <span className="font-mono text-[12.5px] text-ink">data-post-id</span> (CONFIRMED на 100%);
+                  coverage-строка — приёмочный гейт (§25).
+                </p>
+              </Reveal>
+
+              <Reveal delay={120}>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <span className="border border-pass/40 bg-pass/[0.07] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-pass/90">
+                    v_01 PASS · v_02 PASS
+                  </span>
+                  <span
+                    className={`border px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider ${
+                      verdict === "pass"
+                        ? "border-pass/50 bg-pass/10 text-pass"
+                        : "border-fail/50 bg-fail/10 text-fail"
+                    }`}
+                  >
+                    {verdict === "pass" ? "v_03 · PASS (fix2)" : "v_03 · FAIL → v03f2"}
+                  </span>
+                  <span className="border border-steel/50 bg-steel/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-steel">
+                    {verdict === "pass" ? "далее: M-04 · Navigation Target" : "пакет: 0.0.5 · гейт roots>0"}
+                  </span>
+                </div>
+              </Reveal>
+
+              <Reveal delay={200}>
+                <div className="mt-7 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-pass/80">
+                      Пакет · v03f2 на диске (готов к коммиту)
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {extensionFiles.map((f) => (
+                        <span
+                          key={f}
+                          className="border border-pass/25 bg-pass/[0.06] px-2.5 py-1 font-mono text-[11px] text-dim transition-colors hover:border-pass/50 hover:text-ink"
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
+                      Шаблон · вне пакета (§2.2)
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {templateFiles.map((f) => (
+                        <span
+                          key={f}
+                          className="border border-line bg-inset px-2.5 py-1 font-mono text-[11px] text-faint transition-colors hover:border-line2 hover:text-dim"
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-2.5 text-[12.5px] leading-relaxed text-faint">
+                      Сборки нет — plain MV3. Ветка main-qwen_v_03 — последний верный источник:
+                      raw-файл <span className="font-mono text-[11px] text-dim">core/messaging.js</span>{" "}
+                      сверен, идентификаторы совместимы с неизменяемым background.js.
+                    </p>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+
+            <Reveal delay={150}>
+              <Terminal />
+            </Reveal>
+          </div>
+
+          {/* сводная полоса */}
+          <Reveal delay={100}>
+            <div className="mt-12 grid grid-cols-2 gap-px border border-line bg-line lg:grid-cols-4">
+              <div className="flex items-center gap-5 bg-panel px-5 py-5">
+                <ScoreRing size={104} />
+                <div className="font-mono text-[11.5px] leading-relaxed text-dim">
+                  <p><span className="font-bold text-pass">{counts.pass} PASS</span></p>
+                  <p><span className="font-bold text-warn">{counts.warn} WARN</span></p>
+                  <p><span className="font-bold text-fail">{counts.fail} FAIL</span></p>
+                </div>
+              </div>
+
+              <div className="bg-panel px-5 py-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+                  Подтверждённые сборки
+                </p>
+                <p className="mt-2 font-display text-3xl font-extrabold text-ink">
+                  {verdict === "pass" ? 3 : 2}
+                  <span className="text-lg text-faint"> / {stages.length}</span>
+                </p>
+                <div className="mt-3 h-1 overflow-hidden rounded-full bg-line">
+                  <div
+                    className={`progress-fill h-full rounded-full ${verdict === "pass" ? "w-[20%] bg-pass" : "w-[13%] bg-fail"}`}
+                  />
+                </div>
+                <p className="mt-1.5 text-[12px] text-dim">
+                  v_01 ✓ · v_02 ✓ · v_03 {verdict === "pass" ? "PASS (fix2)" : "FAIL → v03f2"}
+                </p>
+              </div>
+
+              <div className="bg-panel px-5 py-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+                  Пакет расширения
+                </p>
+                <p className="mt-2 font-display text-3xl font-extrabold text-ink">
+                  0.0.5<span className="text-lg text-faint"> · MV3</span>
+                </p>
+                <p className="mt-1.5 text-[12px] leading-snug text-dim">
+                  v03f2: селекторы через fromCharCode(95) · посты по data-post-id
+                </p>
+              </div>
+
+              <div className="bg-panel px-5 py-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">Режим процесса</p>
+                <p className="mt-2 font-display text-[15px] font-bold leading-snug text-warn">
+                  §25 + РЕПО-ГЕЙТ: коммит → raw → тест
+                </p>
+                <p className="mt-1.5 text-[12px] leading-snug text-dim">
+                  Подчёркивания — только через fromCharCode(95); coverage — приёмочный гейт
+                </p>
+              </div>
+            </div>
+          </Reveal>
+        </section>
+
+        {/* 01 — фикс v03f2 */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="01"
+            title="Фикс v03f2 — порче-невозможная реализация"
+            sub="Задание M-03-fix2 из report_v_03_f_fix.md исполнено: замер 3C, конструкция селекторов через String.fromCharCode(95), data-post-id для постов, coverage-гейт. Итоговый вердикт v_03 фиксируется здесь — после коммита и raw-верификации (РЕПО-ГЕЙТ)."
+          />
+          <V03F2Section verdict={verdict} setVerdict={setVerdict} />
+        </section>
+
+        {/* 02 — фикс v_03f (история, 3B) */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="02"
+            title="Фикс v_03f — первый ответ на дефект (3B)"
+            sub="История дефекта: доказательная база первого анализа, корень причины (markdown съел подчёркивания), verbatim-контракт селекторов и процедурные решения. Замер 3C показал, что verbatim-передача недостаточна, — понадобилась конструкция через fromCharCode(95)."
+          />
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+            <div className="space-y-6">
+              <Reveal>
+                <div className="cornered border border-line bg-panel/70 p-5 sm:p-6">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="font-display text-[15px] font-semibold text-ink">
+                      Доказательная база (прод)
+                    </h3>
+                    <span className="border border-fail/50 bg-fail/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-widest text-fail">
+                      FAIL частичный
+                    </span>
+                  </div>
+                  <div className="mt-4 space-y-2.5">
+                    {evidenceRows.map((r) => (
+                      <div
+                        key={r.sel}
+                        className={`border px-4 py-3 transition-colors ${
+                          r.works
+                            ? "border-pass/30 bg-pass/[0.05] hover:border-pass/60"
+                            : "border-fail/30 bg-fail/[0.05] hover:border-fail/60"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <code className="font-mono text-[12px] font-bold text-ink">{r.sel}</code>
+                          <span className="font-mono text-[10px] uppercase tracking-wider text-faint">
+                            разделитель: {r.sep}
+                          </span>
+                          <span
+                            className={`ml-auto border px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider ${
+                              r.works
+                                ? "border-pass/50 bg-pass/10 text-pass"
+                                : "border-fail/50 bg-fail/10 text-fail"
+                            }`}
+                          >
+                            {r.works ? "работает" : "не работает"}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">{r.evidence}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 border-l-2 border-warn bg-warn/[0.06] px-4 py-3">
+                    <p className="font-mono text-[10.5px] font-bold uppercase tracking-[0.18em] text-warn">
+                      Корень причины
+                    </p>
+                    <p className="mt-1 text-[13px] leading-relaxed text-dim">
+                      Подчёркивания съедены markdown-рендером при копировании из чата
+                      (<span className="font-mono text-[11.5px] text-fail">wall_comment_date → wallcommentdate</span>).
+                      Дефект передачи кода, а не архитектуры: сами селекторы CONFIRMED диагностикой 3A.
+                    </p>
+                  </div>
+                </div>
+              </Reveal>
+
+              <Reveal delay={80}>
+                <div className="cornered border border-line bg-inset/90 p-5 sm:p-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-display text-[15px] font-semibold text-ink">
+                      Verbatim-контракт селекторов
+                    </h3>
+                    <span className="font-mono text-[10px] text-faint">BUILD_v_03f.md</span>
+                  </div>
+                  <div className="mt-3.5 flex flex-wrap gap-1.5">
+                    {verbatimSelectors.map((s) => {
+                      const hasUnderscore = s.includes("_");
+                      return (
+                        <span
+                          key={s}
+                          className={`border px-2.5 py-1.5 font-mono text-[11.5px] transition-all hover:-translate-y-0.5 ${
+                            hasUnderscore
+                              ? "border-warn/50 bg-warn/10 text-warn"
+                              : "border-pass/40 bg-pass/[0.07] text-pass/90"
+                          }`}
+                        >
+                          {s}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-3 text-[12px] leading-relaxed text-faint">
+                    Жёлтым — селекторы с подчёркиваниями (группа риска при передаче через рендер-канал).
+                    Вердикт 3C: verbatim-фиксации недостаточно — нужен fromCharCode(95) (секция 01).
+                  </p>
+                </div>
+              </Reveal>
+            </div>
+
+            <div className="space-y-6">
+              <Reveal delay={60}>
+                <div className="border border-line bg-panel/70 p-5">
+                  <h3 className="font-display text-[15px] font-semibold text-ink">
+                    Процедурные решения (действуют)
+                  </h3>
+                  <div className="mt-3.5 space-y-3">
+                    {processRules.map((r, i) => (
+                      <div key={r.t} className="flex gap-3.5">
+                        <span className="mt-px flex h-6 w-6 shrink-0 items-center justify-center border border-warn/50 bg-warn/10 font-mono text-[11px] font-bold text-warn">
+                          {i + 1}
+                        </span>
+                        <div>
+                          <p className="font-mono text-[12.5px] font-bold uppercase tracking-wide text-ink">
+                            {r.t}
+                          </p>
+                          <p className="mt-0.5 text-[12.5px] leading-relaxed text-dim">{r.d}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Reveal>
+
+              <Reveal delay={100}>
+                <div className="border border-line bg-panel/70 p-5">
+                  <h3 className="font-display text-[15px] font-semibold text-ink">
+                    Изменённые файлы v_03f · 0.0.4
+                  </h3>
+                  <ul className="mt-3.5 space-y-2">
+                    {fixFiles.map((f) => (
+                      <li
+                        key={f.path}
+                        className="group border border-line/70 bg-inset/60 px-3.5 py-2.5 transition-colors hover:border-line2 hover:bg-inset"
+                      >
+                        <p className="font-mono text-[12px] font-bold text-ink">
+                          EdgeExtension/{f.path}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[10.5px] text-faint">{f.note}</p>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 text-[12px] leading-relaxed text-faint">
+                    Сценарии P1–P4 того теста (TEST_v_03f.md) уступили место минимальному тесту
+                    3C на /feed — см. секцию 01.
+                  </p>
+                </div>
+              </Reveal>
+
+              <Reveal delay={140}>
+                <div className="border border-line bg-panel/70 p-5">
+                  <h3 className="font-display text-[15px] font-semibold text-ink">
+                    Сценарии P1–P4 (исторические)
+                  </h3>
+                  <div className="mt-3.5 space-y-3">
+                    {scenarios.map((sc) => (
+                      <div
+                        key={sc.id}
+                        className="group border border-line/70 px-3.5 py-3 transition-all hover:border-steel/50 hover:bg-steel/[0.04]"
+                      >
+                        <div className="flex items-baseline gap-3">
+                          <span className="font-mono text-[12px] font-bold text-steel">{sc.id}</span>
+                          <p className="font-mono text-[12px] text-ink">{sc.page}</p>
+                        </div>
+                        <ul className="mt-1.5 space-y-1 pl-[37px]">
+                          {sc.expect.map((e) => (
+                            <li key={e} className="flex gap-2 text-[12px] leading-relaxed text-dim">
+                              <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-steel/70" />
+                              {e}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3.5 font-mono text-[10px] uppercase tracking-[0.18em] text-pass/80">
+                    PASS-критерии (исторические)
+                  </p>
+                  <ul className="mt-1.5 space-y-1.5">
+                    {passCriteria.map((p) => (
+                      <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                        <IconCheck />
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        {/* 03 — шаг 3 / v_03 */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="03"
+            title="Шаг 3 · v_03 — VK.RU Adapter: обнаружение"
+            sub="Рабочий лист исходной сборки по заданию docs/3A.md: таблица признаков 3A, конвейер обнаружения, листинги пакета, критерии TEST.md. Итоговый вердикт (по fix2) фиксируется в секции 01."
+          />
+          <V03Sheet verdict={verdict} setVerdict={setVerdict} active={false} />
+        </section>
+
+        {/* 04 — шаг 2 / v_02 (закрыт) */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="04"
+            title="Шаг 2 · v_02 — диагностический канал · закрыт"
+            sub="Историческая сборка: PING/PONG между content.js и Service Worker. Закрыта вердиктом PASS (RESULT_v_02.md, 19.08.2026); канал сохранён в v03f2 как регрессия."
+          />
+          <V02Sheet verdict="pass" setVerdict={() => undefined} locked />
+        </section>
+
+        {/* 05 — шаг 1 / v_01 (закрыт) */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="05"
+            title="Шаг 1 · v_01 — контрольный каркас · закрыт"
+            sub="Историческая сборка: минимальный MV3-манифест, Service Worker и content script. Закрыта вердиктом PASS (RESULT_v_01.md, 18.08.2026); листинги оставлены для протокола."
+          />
+          <V01Sheet verdict="pass" setVerdict={() => undefined} locked />
+        </section>
+
+        {/* 06 — дорожная карта */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="06"
+            title="Дорожная карта v_01 — v_15"
+            sub="Часть 6 регламента: строго последовательно, один модуль — одна тестовая сборка. v_01 и v_02 зелёные (PASS), v_03 в итерации фиксов (v_03f → v03f2); клик раскрывает цель и PASS-критерий."
+          />
+          <Roadmap />
+        </section>
+
+        {/* 07 — матрица */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="07"
+            title="Сверка с architecture.md"
+            sub={`Постатейная проверка: границы и стек (§B), компоненты (§D), контракт ENTITY (§E), идентификация (§F–I), сценарий ПКМ (§J), отказ от legacy (§K), структура каталогов (§L). Всего ${counts.total} пунктов. Бейдж «файл · v_XX» — артефакт создан в соответствующей сборке, полная функция приходит по плану.`}
+          />
+          <ConformanceMatrix />
+        </section>
+
+        {/* 08 — контракт */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="08"
+            title="Контракт ENTITY"
+            sub="Часть 3 регламента: структура заморожена, компоненты обмениваются только ею. Полевые правила — что можно считать ключом, а что запрещено трогать; вопрос §F закрыт диагностикой 3A."
+          />
+          <div className="grid gap-5 lg:grid-cols-[1.15fr_1fr]">
+            <Reveal>
+              <div className="cornered h-full border border-line bg-inset/90">
+                <div className="flex items-center justify-between border-b border-line px-5 py-2.5">
+                  <span className="font-mono text-[11px] tracking-wider text-faint">
+                    entity.contract · зафиксирован
+                  </span>
+                  <span className="border border-warn/40 bg-warn/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider text-warn">
+                    не менять без согласования
+                  </span>
+                </div>
+                <pre className="overflow-x-auto px-5 py-4 font-mono text-[12px] leading-[1.8] text-dim">
+                  {entityContract}
+                </pre>
+              </div>
+            </Reveal>
+            <div className="space-y-3">
+              {entityNotes.map((n, i) => (
+                <Reveal key={n.field} delay={i * 80}>
+                  <div className="req-row group border border-line bg-panel/70 px-4 py-3.5 transition-all hover:bg-panel" data-status="warn">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-mono text-[12px] font-bold text-ink">{n.field}</p>
+                      <span className="font-mono text-[10px] tracking-wider text-steel">{n.doc}</span>
+                    </div>
+                    <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">{n.rule}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 09 — стек */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="09"
+            title="Конфликт стека — решён разведением корней"
+            sub="Единственный WARN аудита (§2.2): шаблон собран на том, что регламент запрещает внутри расширения. Пакет EdgeExtension/ пишется на Vanilla JS с нулём зависимостей — шаблон остаётся снаружи."
+          />
+          <div className="grid gap-5 md:grid-cols-2">
+            <Reveal>
+              <div className="cornered h-full border border-fail/30 bg-panel/80 p-5 sm:p-6">
+                <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-fail">
+                  Как было · package.json
+                </p>
+                <h3 className="mt-1.5 font-display text-[16px] font-bold text-ink">
+                  Vite-шаблон с фреймворками
+                </h3>
+                <ul className="mt-4 space-y-2.5">
+                  {stackLocal.map((s) => (
+                    <li key={s} className="flex items-center gap-3 text-[13.5px] text-dim">
+                      <IconX />
+                      <span className="font-mono text-[12.5px]">{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+            <Reveal delay={120}>
+              <div className="cornered h-full border border-pass/30 bg-panel/80 p-5 sm:p-6">
+                <p className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-pass">
+                  Как надо · РЕГЛАМЕНТ §2.2
+                </p>
+                <h3 className="mt-1.5 font-display text-[16px] font-bold text-ink">
+                  Vanilla JS + нативные API браузера
+                </h3>
+                <ul className="mt-4 space-y-2.5">
+                  {stackTarget.map((s) => (
+                    <li key={s} className="flex items-center gap-3 text-[13.5px] text-dim">
+                      <IconCheck />
+                      <span className="font-mono text-[12.5px]">{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* 10 — чек-лист */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="10"
+            title="Чек-лист запуска"
+            sub="Семь шагов старта проекта. Прогресс сохраняется локально; справа — шаблон задания M-01 по форме §7 как эталон формата для всех следующих модулей."
+          />
+          <Steps />
+        </section>
+
+        {/* финал */}
+        <footer className="border-t border-line">
+          <div className="mx-auto max-w-6xl px-5 py-14">
+            <Reveal>
+              <div className="flex flex-col items-start gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="font-display text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+                    СТОП<span className="text-fail">.</span>
+                  </p>
+                  <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-dim">
+                    {verdict === "pass"
+                      ? "RESULT_v_03.md (fix2) зафиксирован: v_03 = PASS. По report_v_03_f_fix.md проектировщик закрывает v_03 и выдаёт M-04 (Этап 3 — Navigation Target) отдельным заданием."
+                      : "v03f2 реализован. Дальше — РЕПО-ГЕЙТ: закоммитьте EdgeExtension/ (0.0.5) и reports/v_03/ в main-qwen_v_03, отправьте ссылку на коммит проектировщику. Тест на /feed — только после raw-верификации; гейт — roots>0 в coverage-строке. Вердикт устанавливает Пользователь (§5.6)."}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 font-mono text-[11.5px] text-faint">
+                  <a href={DOC_ARCH} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-ink">
+                    docs/architecture.md <IconExt />
+                  </a>
+                  <a href={DOC_REG} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-ink">
+                    docs/РЕГЛАМЕНТ_РАБОТ_v2_0.md <IconExt />
+                  </a>
+                  <a href={DOC_REPORT_F2} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-ink">
+                    reports/v_03/report_v_03_f_fix.md <IconExt />
+                  </a>
+                  <span className="mt-1 text-line2">—</span>
+                  <span>
+                    v_01 PASS · v_02 PASS · v_03: {verdict === "pass" ? "PASS (fix2)" : "FAIL → v03f2 · РЕПО-ГЕЙТ"}
+                  </span>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+--- src/components/V03Sheet.tsx (原始)
+import { useState } from "react";
+import {
+  findings3A,
+  v03Files,
+  v03Tree,
+  v03LoadSteps,
+  v03TestBlock,
+  buildResultV03,
+} from "../data/v03";
+import type { Verdict } from "./V01Sheet";
+import CodeView from "./CodeView";
+import Reveal from "./Reveal";
+
+/* ---------- конвейер обнаружения ---------- */
+
+function Pipeline() {
+  const stages = [
+    {
+      t: "a[wall_comment_date]",
+      s: "дата комментария — якорь (testid)",
+      c: "text-steel border-steel/40 bg-steel/10",
+    },
+    {
+      t: "closest(COMMENT_ROOT_SEL)",
+      s: "проскакивает vkit-обёртки lvl 2–6",
+      c: "text-ink border-line2 bg-panel2",
+    },
+    {
+      t: "ENTITY + sourceElement",
+      s: "kind · type · identity · context",
+      c: "text-warn border-warn/40 bg-warn/10",
+    },
+    {
+      t: "ctx:entity-found → SW",
+      s: "entities reported: N",
+      c: "text-pass border-pass/40 bg-pass/10",
+    },
+  ];
+  return (
+    <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] sm:items-stretch">
+      {stages.map((st, i) => (
+        <div key={st.t} className="contents">
+          <div
+            className={`border px-3 py-2.5 transition-transform duration-300 hover:-translate-y-0.5 ${st.c}`}
+          >
+            <p className="font-mono text-[11px] font-bold leading-snug">{st.t}</p>
+            <p className="mt-1 font-mono text-[9.5px] leading-snug text-faint">{st.s}</p>
+          </div>
+          {i < stages.length - 1 && (
+            <div className="hidden items-center px-1 text-faint sm:flex">
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                <path d="M1 5h10m0 0L8 1.5M11 5L8 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------- лист ---------- */
+
+export default function V03Sheet({
+  verdict,
+  setVerdict,
+  locked = false,
+}: {
+  verdict: Verdict;
+  setVerdict: (v: Verdict) => void;
+  locked?: boolean;
+}) {
+  const [tab, setTab] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [note, setNote] = useState("");
+
+  const copyTree = async () => {
+    try {
+      await navigator.clipboard.writeText(v03Tree);
+    } catch {
+      /* clipboard недоступен — тихо */
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  const download = () => {
+    if (!verdict) return;
+    const blob = new Blob([buildResultV03(verdict, note)], {
+      type: "text/markdown;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "RESULT_v_03.md";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 3A: таблица признаков + конвейер */}
+      <Reveal>
+        <div className="cornered border border-line bg-panel/70 p-5 sm:p-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="font-display text-[15px] font-semibold text-ink">
+              3A ЗАКРЫТ — итоговая таблица признаков
+            </h3>
+            <span className="border border-pass/50 bg-pass/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-widest text-pass">
+              диагностика 3A.3
+            </span>
+            <span className="font-mono text-[10px] text-faint">
+              литералы testid — в восстановленном написании (см. BUILD.md)
+            </span>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[760px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-line2">
+                  <th className="py-2 pr-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-faint">
+                    Признак
+                  </th>
+                  <th className="py-2 pr-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-faint">
+                    Статус
+                  </th>
+                  <th className="py-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-faint">
+                    Роль в архитектуре
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {findings3A.map((f, i) => {
+                  const banned = f.sign.startsWith("vkit");
+                  return (
+                    <tr
+                      key={i}
+                      className="group border-b border-line/60 align-top transition-colors last:border-b-0 hover:bg-steel/[0.04]"
+                    >
+                      <td className="max-w-[300px] py-3 pr-4">
+                        <code
+                          className={`font-mono text-[11.5px] leading-relaxed ${
+                            banned ? "text-fail line-through decoration-fail/60" : "text-ink"
+                          }`}
+                        >
+                          {f.sign}
+                        </code>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span
+                          className={`inline-block whitespace-nowrap border px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider ${
+                            banned
+                              ? "border-fail/50 bg-fail/10 text-fail"
+                              : "border-pass/50 bg-pass/10 text-pass"
+                          }`}
+                        >
+                          {f.status}
+                        </span>
+                      </td>
+                      <td className="py-3 text-[12.5px] leading-relaxed text-dim">{f.role}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-4 font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
+            Конвейер обнаружения (v_03)
+          </p>
+          <div className="mt-2.5">
+            <Pipeline />
+          </div>
+        </div>
+      </Reveal>
+
+      <div className="grid gap-6 lg:grid-cols-[1.02fr_1fr]">
+        {/* левая колонка: код */}
+        <div className="space-y-6">
+          <Reveal delay={60}>
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap gap-1 border-b border-line">
+                {v03Files.map((f, i) => (
+                  <button
+                    key={f.path}
+                    onClick={() => setTab(i)}
+                    className={`tab-btn relative cursor-pointer px-3.5 py-2 font-mono text-[11.5px] font-bold tracking-wide transition-colors ${
+                      i === tab ? "tab-active text-ink" : "text-faint hover:text-dim"
+                    }`}
+                  >
+                    {f.name}
+                  </button>
+                ))}
+              </div>
+              <CodeView
+                path={v03Files[tab].path}
+                note={v03Files[tab].note}
+                code={v03Files[tab].code}
+              />
+            </div>
+          </Reveal>
+
+          <Reveal delay={100}>
+            <div className="cornered border border-line bg-inset/90">
+              <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+                <span className="font-mono text-[11px] tracking-wider text-faint">
+                  изменения пакета v_02 → v_03
+                </span>
+                <button
+                  onClick={copyTree}
+                  className="filter-btn cursor-pointer border border-line bg-panel px-2.5 py-1 font-mono text-[10.5px] tracking-wide text-dim hover:border-steel hover:text-ink"
+                >
+                  {copied ? "✓ скопировано" : "копировать"}
+                </button>
+              </div>
+              <pre className="overflow-x-auto px-5 py-4 font-mono text-[12px] leading-[1.8] text-dim">
+                {v03Tree}
+              </pre>
+            </div>
+          </Reveal>
+        </div>
+
+        {/* правая колонка: загрузка + тест + вердикт */}
+        <div className="space-y-6">
+          <Reveal delay={80}>
+            <div className="border border-line bg-panel/70 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-display text-[15px] font-semibold text-ink">
+                  Как загрузить в Edge
+                </h3>
+                <span className="border border-steel/40 bg-steel/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-steel">
+                  0.0.3
+                </span>
+              </div>
+              <ol className="mt-4 space-y-4">
+                {v03LoadSteps.map((s, i) => (
+                  <li key={s.t} className="flex gap-3.5">
+                    <span className="mt-px flex h-6 w-6 shrink-0 items-center justify-center border border-steel/50 bg-steel/10 font-mono text-[11px] font-bold text-steel">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="text-[13.5px] font-semibold leading-snug text-ink">{s.t}</p>
+                      <p className="mt-1 text-[12.5px] leading-relaxed text-dim">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div className="border border-line bg-panel/70 p-5">
+              <h3 className="font-display text-[15px] font-semibold text-ink">
+                TEST · критерии (reports/v_03/TEST.md)
+              </h3>
+
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
+                Предусловия
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {v03TestBlock.pre.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-faint" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-pass/80">
+                PASS — ожидается
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {v03TestBlock.pass.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="mt-[5px] shrink-0">
+                      <path d="M2 6.2L4.8 9L10 3.4" stroke="var(--color-pass)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-fail/80">
+                FAIL — признаки
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {v03TestBlock.fail.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="mt-[5px] shrink-0">
+                      <path d="M2.5 2.5l7 7m0-7l-7 7" stroke="var(--color-fail)" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+
+          <Reveal delay={160}>
+            <div className="border border-line bg-panel/70 p-5">
+              <h3 className="font-display text-[15px] font-semibold text-ink">
+                RESULT_v_03.md · фиксация вердикта
+              </h3>
+
+              {locked ? (
+                <div className="mt-4 border border-pass/40 bg-pass/[0.07] px-4 py-3.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="border border-pass/60 bg-pass/15 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-widest text-pass">
+                      PASS · зафиксирован
+                    </span>
+                    <span className="font-mono text-[11px] text-dim">
+                      reports/v_03/RESULT_v_03.md
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setVerdict(verdict === "pass" ? null : "pass")}
+                      className={`verdict-btn cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                        verdict === "pass"
+                          ? "border-pass bg-pass/15 text-pass shadow-[0_0_24px_-6px_rgba(56,180,126,0.5)]"
+                          : "border-line bg-panel text-dim hover:border-pass/60 hover:text-pass"
+                      }`}
+                    >
+                      PASS
+                    </button>
+                    <button
+                      onClick={() => setVerdict(verdict === "fail" ? null : "fail")}
+                      className={`verdict-btn cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                        verdict === "fail"
+                          ? "border-fail bg-fail/15 text-fail shadow-[0_0_24px_-6px_rgba(224,90,82,0.5)]"
+                          : "border-line bg-panel text-dim hover:border-fail/60 hover:text-fail"
+                      }`}
+                    >
+                      FAIL
+                    </button>
+                  </div>
+                  <p className="mt-2.5 text-[11.5px] leading-relaxed text-faint">
+                    Вердикт сохраняется локально и управляет сводкой. Статус устанавливает только
+                    Пользователь (§5.6); при FAIL остаёмся внутри v_03 (§5.1).
+                  </p>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Комментарий к RESULT_v_03.md (testid в живом DOM, id, наблюдения)…"
+                    className="mt-3 h-20 w-full resize-none border border-line bg-inset px-3 py-2.5 font-mono text-[12px] text-ink placeholder:text-faint focus:border-steel focus:outline-none"
+                  />
+                  <button
+                    onClick={download}
+                    disabled={!verdict}
+                    className={`mt-3 w-full cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                      verdict
+                        ? "border-steel/70 bg-steel/15 text-ink hover:bg-steel/25"
+                        : "cursor-not-allowed border-line bg-panel text-faint"
+                    }`}
+                  >
+                    Скачать RESULT_v_03.md
+                  </button>
+                </>
+              )}
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
++++ src/components/V03Sheet.tsx (修改后)
+import { useState } from "react";
+import {
+  findings3A,
+  v03Files,
+  v03Tree,
+  v03LoadSteps,
+  v03TestBlock,
+  buildResultV03,
+} from "../data/v03";
+import type { Verdict } from "./V01Sheet";
+import CodeView from "./CodeView";
+import Reveal from "./Reveal";
+
+/* ---------- конвейер обнаружения ---------- */
+
+function Pipeline() {
+  const stages = [
+    {
+      t: "a[wall_comment_date]",
+      s: "дата комментария — якорь (testid)",
+      c: "text-steel border-steel/40 bg-steel/10",
+    },
+    {
+      t: "closest(COMMENT_ROOT_SEL)",
+      s: "проскакивает vkit-обёртки lvl 2–6",
+      c: "text-ink border-line2 bg-panel2",
+    },
+    {
+      t: "ENTITY + sourceElement",
+      s: "kind · type · identity · context",
+      c: "text-warn border-warn/40 bg-warn/10",
+    },
+    {
+      t: "ctx:entity-found → SW",
+      s: "entities reported: N",
+      c: "text-pass border-pass/40 bg-pass/10",
+    },
+  ];
+  return (
+    <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] sm:items-stretch">
+      {stages.map((st, i) => (
+        <div key={st.t} className="contents">
+          <div
+            className={`border px-3 py-2.5 transition-transform duration-300 hover:-translate-y-0.5 ${st.c}`}
+          >
+            <p className="font-mono text-[11px] font-bold leading-snug">{st.t}</p>
+            <p className="mt-1 font-mono text-[9.5px] leading-snug text-faint">{st.s}</p>
+          </div>
+          {i < stages.length - 1 && (
+            <div className="hidden items-center px-1 text-faint sm:flex">
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                <path d="M1 5h10m0 0L8 1.5M11 5L8 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------- лист ---------- */
+
+export default function V03Sheet({
+  verdict,
+  setVerdict,
+  locked = false,
+  active = true,
+}: {
+  verdict: Verdict;
+  setVerdict: (v: Verdict) => void;
+  locked?: boolean;
+  /** false — рекордер выключен: итоговый вердикт фиксируется в листе актуального фикса */
+  active?: boolean;
+}) {
+  const [tab, setTab] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [note, setNote] = useState("");
+
+  const copyTree = async () => {
+    try {
+      await navigator.clipboard.writeText(v03Tree);
+    } catch {
+      /* clipboard недоступен — тихо */
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  const download = () => {
+    if (!verdict) return;
+    const blob = new Blob([buildResultV03(verdict, note)], {
+      type: "text/markdown;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "RESULT_v_03.md";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 3A: таблица признаков + конвейер */}
+      <Reveal>
+        <div className="cornered border border-line bg-panel/70 p-5 sm:p-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="font-display text-[15px] font-semibold text-ink">
+              3A ЗАКРЫТ — итоговая таблица признаков
+            </h3>
+            <span className="border border-pass/50 bg-pass/10 px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-widest text-pass">
+              диагностика 3A.3
+            </span>
+            <span className="font-mono text-[10px] text-faint">
+              литералы testid — в восстановленном написании (см. BUILD.md)
+            </span>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[760px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-line2">
+                  <th className="py-2 pr-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-faint">
+                    Признак
+                  </th>
+                  <th className="py-2 pr-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-faint">
+                    Статус
+                  </th>
+                  <th className="py-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-faint">
+                    Роль в архитектуре
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {findings3A.map((f, i) => {
+                  const banned = f.sign.startsWith("vkit");
+                  return (
+                    <tr
+                      key={i}
+                      className="group border-b border-line/60 align-top transition-colors last:border-b-0 hover:bg-steel/[0.04]"
+                    >
+                      <td className="max-w-[300px] py-3 pr-4">
+                        <code
+                          className={`font-mono text-[11.5px] leading-relaxed ${
+                            banned ? "text-fail line-through decoration-fail/60" : "text-ink"
+                          }`}
+                        >
+                          {f.sign}
+                        </code>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <span
+                          className={`inline-block whitespace-nowrap border px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider ${
+                            banned
+                              ? "border-fail/50 bg-fail/10 text-fail"
+                              : "border-pass/50 bg-pass/10 text-pass"
+                          }`}
+                        >
+                          {f.status}
+                        </span>
+                      </td>
+                      <td className="py-3 text-[12.5px] leading-relaxed text-dim">{f.role}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-4 font-mono text-[10.5px] uppercase tracking-[0.2em] text-faint">
+            Конвейер обнаружения (v_03)
+          </p>
+          <div className="mt-2.5">
+            <Pipeline />
+          </div>
+        </div>
+      </Reveal>
+
+      <div className="grid gap-6 lg:grid-cols-[1.02fr_1fr]">
+        {/* левая колонка: код */}
+        <div className="space-y-6">
+          <Reveal delay={60}>
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap gap-1 border-b border-line">
+                {v03Files.map((f, i) => (
+                  <button
+                    key={f.path}
+                    onClick={() => setTab(i)}
+                    className={`tab-btn relative cursor-pointer px-3.5 py-2 font-mono text-[11.5px] font-bold tracking-wide transition-colors ${
+                      i === tab ? "tab-active text-ink" : "text-faint hover:text-dim"
+                    }`}
+                  >
+                    {f.name}
+                  </button>
+                ))}
+              </div>
+              <CodeView
+                path={v03Files[tab].path}
+                note={v03Files[tab].note}
+                code={v03Files[tab].code}
+              />
+            </div>
+          </Reveal>
+
+          <Reveal delay={100}>
+            <div className="cornered border border-line bg-inset/90">
+              <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+                <span className="font-mono text-[11px] tracking-wider text-faint">
+                  изменения пакета v_02 → v_03
+                </span>
+                <button
+                  onClick={copyTree}
+                  className="filter-btn cursor-pointer border border-line bg-panel px-2.5 py-1 font-mono text-[10.5px] tracking-wide text-dim hover:border-steel hover:text-ink"
+                >
+                  {copied ? "✓ скопировано" : "копировать"}
+                </button>
+              </div>
+              <pre className="overflow-x-auto px-5 py-4 font-mono text-[12px] leading-[1.8] text-dim">
+                {v03Tree}
+              </pre>
+            </div>
+          </Reveal>
+        </div>
+
+        {/* правая колонка: загрузка + тест + вердикт */}
+        <div className="space-y-6">
+          <Reveal delay={80}>
+            <div className="border border-line bg-panel/70 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-display text-[15px] font-semibold text-ink">
+                  Как загрузить в Edge
+                </h3>
+                <span className="border border-steel/40 bg-steel/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-steel">
+                  0.0.3
+                </span>
+              </div>
+              <ol className="mt-4 space-y-4">
+                {v03LoadSteps.map((s, i) => (
+                  <li key={s.t} className="flex gap-3.5">
+                    <span className="mt-px flex h-6 w-6 shrink-0 items-center justify-center border border-steel/50 bg-steel/10 font-mono text-[11px] font-bold text-steel">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="text-[13.5px] font-semibold leading-snug text-ink">{s.t}</p>
+                      <p className="mt-1 text-[12.5px] leading-relaxed text-dim">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div className="border border-line bg-panel/70 p-5">
+              <h3 className="font-display text-[15px] font-semibold text-ink">
+                TEST · критерии (reports/v_03/TEST.md)
+              </h3>
+
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
+                Предусловия
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {v03TestBlock.pre.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-faint" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-pass/80">
+                PASS — ожидается
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {v03TestBlock.pass.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="mt-[5px] shrink-0">
+                      <path d="M2 6.2L4.8 9L10 3.4" stroke="var(--color-pass)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-fail/80">
+                FAIL — признаки
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {v03TestBlock.fail.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[12.5px] leading-relaxed text-dim">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="mt-[5px] shrink-0">
+                      <path d="M2.5 2.5l7 7m0-7l-7 7" stroke="var(--color-fail)" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+
+          <Reveal delay={160}>
+            <div className="border border-line bg-panel/70 p-5">
+              <h3 className="font-display text-[15px] font-semibold text-ink">
+                RESULT_v_03.md · фиксация вердикта
+              </h3>
+
+              {!active ? (
+                <div className="mt-4 border border-line bg-inset/70 px-4 py-3.5">
+                  <p className="font-mono text-[11px] font-bold uppercase tracking-widest text-steel">
+                    вердикт — в листе фикса v03f2
+                  </p>
+                  <p className="mt-1.5 text-[12.5px] leading-relaxed text-dim">
+                    Итоговый статус v_03 (по последнему фиксу) фиксируется в секции 01 —
+                    RESULT_v_03.md (fix2). Этот лист оставлен как исторический протокол
+                    исходной сборки по docs/3A.md.
+                  </p>
+                </div>
+              ) : locked ? (
+                <div className="mt-4 border border-pass/40 bg-pass/[0.07] px-4 py-3.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="border border-pass/60 bg-pass/15 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-widest text-pass">
+                      PASS · зафиксирован
+                    </span>
+                    <span className="font-mono text-[11px] text-dim">
+                      reports/v_03/RESULT_v_03.md
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setVerdict(verdict === "pass" ? null : "pass")}
+                      className={`verdict-btn cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                        verdict === "pass"
+                          ? "border-pass bg-pass/15 text-pass shadow-[0_0_24px_-6px_rgba(56,180,126,0.5)]"
+                          : "border-line bg-panel text-dim hover:border-pass/60 hover:text-pass"
+                      }`}
+                    >
+                      PASS
+                    </button>
+                    <button
+                      onClick={() => setVerdict(verdict === "fail" ? null : "fail")}
+                      className={`verdict-btn cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                        verdict === "fail"
+                          ? "border-fail bg-fail/15 text-fail shadow-[0_0_24px_-6px_rgba(224,90,82,0.5)]"
+                          : "border-line bg-panel text-dim hover:border-fail/60 hover:text-fail"
+                      }`}
+                    >
+                      FAIL
+                    </button>
+                  </div>
+                  <p className="mt-2.5 text-[11.5px] leading-relaxed text-faint">
+                    Вердикт сохраняется локально и управляет сводкой. Статус устанавливает только
+                    Пользователь (§5.6); при FAIL остаёмся внутри v_03 (§5.1).
+                  </p>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Комментарий к RESULT_v_03.md (testid в живом DOM, id, наблюдения)…"
+                    className="mt-3 h-20 w-full resize-none border border-line bg-inset px-3 py-2.5 font-mono text-[12px] text-ink placeholder:text-faint focus:border-steel focus:outline-none"
+                  />
+                  <button
+                    onClick={download}
+                    disabled={!verdict}
+                    className={`mt-3 w-full cursor-pointer border px-4 py-3 font-mono text-[12px] font-bold uppercase tracking-widest transition-all ${
+                      verdict
+                        ? "border-steel/70 bg-steel/15 text-ink hover:bg-steel/25"
+                        : "cursor-not-allowed border-line bg-panel text-faint"
+                    }`}
+                  >
+                    Скачать RESULT_v_03.md
+                  </button>
+                </>
+              )}
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+--- src/data/audit.ts (原始)
+export type Status = "pass" | "warn" | "fail";
+
+export interface ReqItem {
+  id: string;
+  req: string;
+  status: Status;
+  note: string;
+  doc: string;
+  /** Пометка: артефакт появился в сборке v_XX (файл создан, полная функция — позже) */
+  since?: string;
+}
+
+export interface ReqGroup {
+  section: string;
+  title: string;
+  items: ReqItem[];
+}
+
+export const reqGroups: ReqGroup[] = [
+  {
+    section: "§B · §2.2",
+    title: "Границы и технологический стек",
+    items: [
+      {
+        id: "stack",
+        req: "Vanilla JS (ES6+), без фреймворков и npm-зависимостей",
+        status: "warn",
+        note: "Локальный репо — React 18 + Vite 6 + TypeScript + Tailwind 4 (плюс recharts, framer-motion, supabase-js). Регламент §2.2 и §5.3 прямо запрещают внешние библиотеки в расширении.",
+        doc: "РЕГЛАМЕНТ §2.2",
+      },
+      {
+        id: "mv3",
+        req: "Manifest V3, Service Worker, chrome.* API",
+        status: "fail",
+        note: "Ни manifest.json, ни одного вызова chrome.* в репозитории нет. Целевая среда — только desktop Edge и только vk.ru (§B, §2.1).",
+        doc: "architecture.md §B",
+      },
+    ],
+  },
+  {
+    section: "§D",
+    title: "Компоненты расширения",
+    items: [
+      {
+        id: "background",
+        req: "background.js — Service Worker (contextMenus, storage, маршрутизация)",
+        status: "fail",
+        note: "v_01: жизненный цикл. v_02: PING→PONG. v_03: приём ENTITY_FOUND + сводка в консоли SW. contextMenus/storage — по плану с v_10/v_12.",
+        doc: "architecture.md §D.3",
+        since: "v_01",
+      },
+      {
+        id: "content",
+        req: "content.js — точка входа Content Script (MutationObserver, делегирование адаптеру, инъекция UI-слоя)",
+        status: "fail",
+        note: "v_01: сигнал запуска. v_03: скан + debounced MutationObserver (600 мс) + дедупликация + отчёт ENTITY_FOUND. Инъекция UI-слоя — с v_07 по плану.",
+        doc: "architecture.md §D.1",
+        since: "v_01",
+      },
+      {
+        id: "adapter",
+        req: "adapters/vkru.js — обнаружение сущностей и нормализация в ENTITY",
+        status: "fail",
+        note: "Создан в v_03 по данным 3A: scan() только по data-testid, ключ — href. v_03: FAIL (частичный) — дефект передачи (markdown съел «_»). v_03f: verbatim-литералы зафиксированы, логика без изменений + coverage-самодиагностика (0.0.4).",
+        doc: "architecture.md §D.2, РЕГЛАМЕНТ §5.7",
+        since: "v_03",
+      },
+      {
+        id: "storage",
+        req: "core/storage.js — абстракция над chrome.storage.local (плоское KV)",
+        status: "fail",
+        note: "Отсутствует. Модель — Map<IdentityURL, EntityRecord>, без реляционной структуры legacy (§K).",
+        doc: "architecture.md §D, §K",
+      },
+      {
+        id: "messaging",
+        req: "core/messaging.js — маршрутизация сообщений MV3",
+        status: "fail",
+        note: "v_02: CTX_MSG (PING/PONG), канал проверен. v_03: + ENTITY_FOUND (content → SW). Полная маршрутизация команд — с этапами 8–9.",
+        doc: "architecture.md §D, РЕГЛАМЕНТ ч.6",
+        since: "v_02",
+      },
+      {
+        id: "ui",
+        req: "ui/dialog.js + popup.js — диалог записи сущности и popup",
+        status: "fail",
+        note: "Отсутствуют, как и dialog.html / popup.html. Появляются на этапах 8–9 (v_09–v_10).",
+        doc: "architecture.md §D.4",
+      },
+      {
+        id: "layer",
+        req: "ui/layer.js — отрисовка маркеров (▲, цвет) в DOM",
+        status: "fail",
+        note: "Отсутствует. Принцип «собственного слоя»: соседние DOM-узлы, не модификация внутренностей VK (§H.1).",
+        doc: "architecture.md §D, §H",
+      },
+      {
+        id: "styles",
+        req: "styles.css — изолированные стили собственного слоя",
+        status: "fail",
+        note: "В репо есть только Tailwind-сборка шаблона. Нужны жёсткие селекторы вида .ctx-marker-*, иначе покрасится весь VK (§H, прим. 3 к регламенту).",
+        doc: "architecture.md §D.5",
+      },
+    ],
+  },
+  {
+    section: "§E · §F–I",
+    title: "Контракт данных и идентификация",
+    items: [
+      {
+        id: "entity",
+        req: "ENTITY-контракт зафиксирован в коде (type / identity / context / sourceElement / capabilities)",
+        status: "fail",
+        note: "Нигде не объявлен. Контракт заморожен в части 3 регламента и не может меняться без согласования.",
+        doc: "РЕГЛАМЕНТ ч.3",
+      },
+      {
+        id: "navtarget",
+        req: "Идентификация по navigation target (href) — первичный ключ",
+        status: "fail",
+        note: "Не реализована. CSS-классы VK (vkit-*, Post__author) — только OBSERVED, ключами быть не могут (§G). data-* атрибуты — HYPOTHESIS, ждут проверки на живом DOM.",
+        doc: "architecture.md §F–I",
+      },
+      {
+        id: "ctxmenu",
+        req: "Сценарий ПКМ / выделение через chrome.contextMenus + selectionchange",
+        status: "fail",
+        note: "Не реализован. Этап 9 (v_10) — после появления диалога.",
+        doc: "architecture.md §J",
+      },
+    ],
+  },
+  {
+    section: "§K",
+    title: "Отказ от Legacy",
+    items: [
+      {
+        id: "legacy",
+        req: "Старая логика НЕ перенесена: Handlers Map, ranks/histatuses, 6 доменов, массовый сбор",
+        status: "pass",
+        note: "Выполнено — тривиально: переносить в пустом репозитории пока нечего. Важно не нарушить при старте: из старого кода берутся только идеи.",
+        doc: "architecture.md §K, РЕГЛАМЕНТ §1.2.3",
+      },
+    ],
+  },
+  {
+    section: "§L · §2.3",
+    title: "Структура каталогов",
+    items: [
+      {
+        id: "root",
+        req: "EdgeExtension/ — корень расширения (загружается в Edge в режиме разработчика)",
+        status: "fail",
+        note: "Создан в шаге 1: manifest.json + src/. Vite-шаблон вынесен за пределы пакета, в Edge загружается только EdgeExtension/.",
+        doc: "architecture.md §L",
+        since: "v_01",
+      },
+      {
+        id: "manifest-files",
+        req: "manifest.json, popup.html, dialog.html, icons/ (16, 48, 128)",
+        status: "fail",
+        note: "manifest.json создан (MV3, 0.0.1). popup.html / dialog.html — этапы 8–9; фирменные иконки 16/48/128 — косметика после PASS (сейчас штатная).",
+        doc: "architecture.md §L",
+        since: "v_01",
+      },
+      {
+        id: "scripts",
+        req: "scripts/ — Build.ps1, Clean.ps1, Test.ps1 (PowerShell)",
+        status: "fail",
+        note: "Созданы Build.ps1 / Clean.ps1 / Test.ps1 (состав v_01). Целевая ОС — Windows 10/11 (§2.1).",
+        doc: "architecture.md §L",
+        since: "v_01",
+      },
+      {
+        id: "reports",
+        req: "reports/ — артефакты сборок: v_XX/{BUILD.md, TEST.md, RESULT.md}",
+        status: "fail",
+        note: "Создана: reports/v_01/{BUILD.md, TEST.md, RESULT.md}. Вердикт RESULT.md — только от Пользователя (§5.6).",
+        doc: "РЕГЛАМЕНТ ч.4",
+        since: "v_01",
+      },
+      {
+        id: "docs",
+        req: "docs/ — локальные копии architecture.md и РЕГЛАМЕНТ_РАБОТ v2.0",
+        status: "fail",
+        note: "Документы есть в удалённом репозитории, но в локальном рабочем репо их нет — источник истины должен лежать рядом с кодом.",
+        doc: "architecture.md §L",
+      },
+    ],
+  },
+];
+
+export const allItems = reqGroups.flatMap((g) => g.items);
+export const counts = {
+  pass: allItems.filter((i) => i.status === "pass").length,
+  warn: allItems.filter((i) => i.status === "warn").length,
+  fail: allItems.filter((i) => i.status === "fail").length,
+  total: allItems.length,
+};
+export const scorePct = Math.round((counts.pass / counts.total) * 100);
+
+/* ---------- дорожная карта v_01 — v_15 ---------- */
+
+export interface Stage {
+  v: string;
+  num: number;
+  title: string;
+  goal: string;
+  pass: string;
+  tag?: "диагностика" | "адаптер" | "UI-слой" | "данные";
+  state?: "done" | "current";
+}
+
+export const stages: Stage[] = [
+  {
+    v: "v_01",
+    num: 0,
+    title: "Контрольный каркас",
+    goal: "Минимальный MV3-манифест, загрузка распакованного расширения в Edge, запуск content.js на https://vk.ru/.",
+    pass: "Расширение видимо в edge://extensions без ошибок; на vk.ru в консоли страницы появляется маркер запуска content.js.",
+    state: "done",
+  },
+  {
+    v: "v_02",
+    num: 1,
+    title: "Диагностический канал",
+    goal: "Обмен сообщениями PING/PONG между content.js и background.js (Service Worker) через chrome.runtime.",
+    pass: "PING из content-скрипта достигает SW и возвращается PONG; оба события логируются.",
+    state: "done",
+  },
+  {
+    v: "v_03",
+    num: 2,
+    title: "VK.RU Adapter: обнаружение",
+    goal: "Поиск sourceElement в DOM. Обязательно сопровождается snippet'ом для консоли DevTools — проверка гипотез на живой странице.",
+    pass: "Пользователь подтвердил вывод диагностики; адаптер находит контейнер сущности по семантическим признакам (href, role, data-*).",
+    tag: "диагностика",
+    state: "current",
+  },
+  {
+    v: "v_04",
+    num: 3,
+    title: "Navigation Target",
+    goal: "Извлечение href ближайшей релевантной ссылки, нормализация URL: отбрасывание GET-параметров (reply, thread, from) и трекеров.",
+    pass: "Для /id123, /club456, /wall-123_456 извлекается устойчивое семантическое ядро URL.",
+    tag: "адаптер",
+  },
+  {
+    v: "v_05",
+    num: 4,
+    title: "Нормализатор ENTITY",
+    goal: "Формирование объекта ENTITY строго по контракту части 3 регламента.",
+    pass: "Объект содержит все обязательные поля; sourceElement не сериализуется при передаче в background.",
+    tag: "адаптер",
+  },
+  {
+    v: "v_06",
+    num: 5,
+    title: "Контекст",
+    goal: "Привязка сущности к родителю: context.source (comment / post / sidebar), parentPostId, threadId.",
+    pass: "Автор комментария получает корректные parentPostId и threadId.",
+    tag: "адаптер",
+  },
+  {
+    v: "v_07",
+    num: 6,
+    title: "Собственный визуальный слой",
+    goal: "Инъекция диагностического маркера [ENTITY] через styles.css. Проверка изоляции: стили VK не задеты, классы — только .ctx-*.",
+    pass: "Маркер виден у найденных сущностей; верстка vk.ru не изменилась.",
+    tag: "UI-слой",
+  },
+  {
+    v: "v_08",
+    num: 7,
+    title: "Треугольник ▲",
+    goal: "Замена маркера на ▲. MutationObserver следит за SPA-навигацией и подгрузкой комментариев, маркеры перепривязываются.",
+    pass: "После SPA-перехода и подгрузки новых комментариев маркеры появляются без перезагрузки страницы.",
+    tag: "UI-слой",
+  },
+  {
+    v: "v_09",
+    num: 8,
+    title: "Действие по треугольнику",
+    goal: "Клик по маркеру открывает dialog.html с предзаполненными ENTITY-данными.",
+    pass: "Диалог открывается с корректными type / id / контекстом.",
+    tag: "UI-слой",
+  },
+  {
+    v: "v_10",
+    num: 9,
+    title: "ПКМ / выделение",
+    goal: "Интеграция chrome.contextMenus + selectionchange: пункт «Context: Записать сущность» по выделенному нику.",
+    pass: "Выделение ника → ПКМ → пункт меню запрашивает активный ENTITY у content.js и открывает диалог.",
+  },
+  {
+    v: "v_11",
+    num: 10,
+    title: "Сохранение",
+    goal: "Запись EntityRecord в chrome.storage.local, ключ — нормализованный identity.url.",
+    pass: "Запись переживает перезагрузку страницы и перезапуск браузера; маркер отрисовывается из хранилища.",
+    tag: "данные",
+  },
+  {
+    v: "v_12",
+    num: 11,
+    title: "Маркеры: тип и цвет",
+    goal: "Назначение маркера (треугольник, цвет) из диалога, мгновенная перерисовка слоя.",
+    pass: "Смена цвета/типа сохраняется и отрисовывается без перезагрузки.",
+    tag: "данные",
+  },
+  {
+    v: "v_13",
+    num: 12,
+    title: "Примечания",
+    goal: "Текстовые заметки к сущности, редактирование, отображение в popup.",
+    pass: "Заметка сохраняется и доступна из popup по ключу identity.url.",
+    tag: "данные",
+  },
+  {
+    v: "v_14",
+    num: 13,
+    title: "Календарь / даты",
+    goal: "Даты в записях сущностей, фильтрация в popup по свежести.",
+    pass: "Даты фиксируются при сохранении и корректно отображаются.",
+    tag: "данные",
+  },
+  {
+    v: "v_15",
+    num: 14,
+    title: "Финальная интеграция",
+    goal: "Сборка всех модулей, чистка, scripts/Build.ps1, итоговые отчёты, подготовка к повседневному использованию.",
+    pass: "Полный сценарий «нашёл → пометил → заметил → нашёл снова» работает на vk.ru от начала до конца.",
+  },
+];
+
+/* ---------- шаги запуска ---------- */
+
+export interface Step {
+  id: string;
+  text: string;
+  detail: string;
+}
+
+export const steps: Step[] = [
+  {
+    id: "s1",
+    text: "Зафиксировать устав проекта локально",
+    detail:
+      "Скопировать docs/architecture.md и РЕГЛАМЕНТ_РАБОТ_v2_0.md в локальный каталог docs/. Оба документа — единственный источник истины; любая новая LLM-сессия начинает с них.",
+  },
+  {
+    id: "s2",
+    text: "Развести корни: EdgeExtension/ и шаблон",
+    detail:
+      "Создать структуру по §L: EdgeExtension/, scripts/, reports/, docs/, .vscode/. Vite/React-шаблон не должен попадать в корень, загружаемый в Edge: либо архивировать, либо оставить отдельным инструментом (например, этим дашбордом).",
+  },
+  {
+    id: "s3",
+    text: "Подготовить артефакты v_01",
+    detail:
+      "manifest.json (MV3: name, version 0.0.1, host_permissions: https://vk.ru/*, background.service_worker, content_scripts), заглушки background.js и content.js, иконки 16/48/128 px.",
+  },
+  {
+    id: "s4",
+    text: "Оформить отчётную папку reports/v_01/",
+    detail:
+      "BUILD.md (что собрано) и TEST.md по шаблону: предусловия → действия → PASS-критерии. Инструкцию по загрузке писать для «распакованного расширения» в Edge.",
+  },
+  {
+    id: "s5",
+    text: "Прогнать Этап 0 руками в Edge",
+    detail:
+      "edge://extensions → «Режим разработчика» → «Загрузить распакованное расширение» → папка EdgeExtension/ → открыть https://vk.ru/ и проверить консоль страницы.",
+  },
+  {
+    id: "s6",
+    text: "Записать RESULT.md и дождаться PASS",
+    detail:
+      "Статус устанавливает только Пользователь (§5.6). При FAIL/BLOCKED — работаем внутри v_01, перескакивать запрещено (§4, §5.1). Только после PASS открываем v_02 (PING/PONG).",
+  },
+  {
+    id: "s7",
+    text: "Заготовить диагностику для vkru.js",
+    detail:
+      "До Этапа 2 (v_03) подготовить snippet для консоли DevTools vk.ru: проверка HYPOTHESIS о data-* атрибутах и структуре ссылок (§5.7, §F). Адаптер пишется только по подтверждённым данным.",
+  },
+];
+
+/* ---------- терминал ---------- */
+
+export interface TermLine {
+  type: "cmd" | "fail" | "warn" | "pass" | "info" | "arrow";
+  text: string;
+}
+
+export const termLines: TermLine[] = [
+  { type: "cmd", text: "context-vkru — сверка локального репо с docs/" },
+  { type: "info", text: "источник: architecture.md (шаг 1) + РЕГЛАМЕНТ_РАБОТ v2.0" },
+  { type: "fail", text: "EdgeExtension/ .................... отсутствует" },
+  { type: "fail", text: "manifest.json (MV3) ............... отсутствует" },
+  { type: "fail", text: "background.js / content.js ........ отсутствует" },
+  { type: "fail", text: "adapters/vkru.js .................. отсутствует (§E не реализован)" },
+  { type: "fail", text: "core/ · ui/ · styles.css .......... отсутствует" },
+  { type: "fail", text: "scripts/ · reports/ · docs/ ....... отсутствует (§L)" },
+  { type: "warn", text: "стек: React+Vite+TS+Tailwind ↔ Vanilla JS (§2.2)" },
+  { type: "pass", text: "§K: legacy-логика не перенесена .... тривиально PASS" },
+  { type: "arrow", text: "итог: 1 PASS · 1 WARN · 15 FAIL → соответствие 6%" },
+  { type: "arrow", text: "режим: готов к Этапу 0 — сборка v_01 «Контрольный каркас»" },
+  { type: "pass", text: "шаг 1: EdgeExtension/ создан — manifest · background · content" },
+  { type: "pass", text: "шаг 1: reports/v_01/ + scripts/ на месте (BUILD · TEST · RESULT)" },
+  { type: "pass", text: "RESULT_v_01.md: PASS от Пользователя (18.08.2026) — v_01 закрыт" },
+  { type: "pass", text: "шаг 2: v_02 — core/messaging.js · PING/PONG · default_locale: ru" },
+  { type: "pass", text: "RESULT_v_02.md: PASS от Пользователя (19.08.2026) — v_02 закрыт" },
+  { type: "pass", text: "3A ЗАКРЫТ: data-testid CONFIRMED · href — ключ · vkit-* не используются" },
+  { type: "pass", text: "шаг 3: v_03 — adapters/vkru.js · ENTITY_FOUND · MutationObserver 600 мс" },
+  { type: "fail", text: "RESULT v_03: FAIL (частичный) — markdown съел подчёркивания при передаче" },
+  { type: "pass", text: "фикс v_03f (0.0.4): verbatim-селекторы · coverage posts/dates/roots · РЕПО-ГЕЙТ" },
+  { type: "arrow", text: "порядок: коммит в main-qwen_v_03 → raw-верификация → тест P1–P4" },
+  { type: "cmd", text: "ожидание ссылки на коммит_" },
+];
+
+/* ---------- конфликт стека ---------- */
+
+export const stackLocal = [
+  "React 18 + react-dom + react-router",
+  "Vite 6 + TypeScript 5",
+  "Tailwind CSS 4",
+  "recharts · framer-motion · dnd-kit",
+  "supabase-js · uuid · date-fns",
+];
+
+export const stackTarget = [
+  "Vanilla JS (ES6+), 0 зависимостей",
+  "Manifest V3 · Service Worker",
+  "chrome.storage.local · contextMenus · runtime",
+  "MutationObserver + нативный DOM",
+  "Native HTML/CSS/JS, PowerShell-скрипты",
+];
+
+/* ---------- контракт ENTITY ---------- */
+
+export const entityContract = `// ENTITY CONTRACT  (РЕГЛАМЕНТ, часть 3 — заморожен)
+{
+    type: "PERSON" | "COMMUNITY" | "COMMENT_AUTHOR" | "POST_AUTHOR",
+    identity: {
+        id: "string",    // устойчивый ID из URL: "id123", "club456", "wall-123_456"
+        url: "string",   // нормализованный Navigation Target (без GET-параметров)
+    },
+    context: {
+        source: "comment" | "post" | "sidebar",
+        parentPostId: "string | null",
+        threadId: "string | null"
+    },
+    sourceElement: HTMLElement,  // только для content.js — НЕ сериализуется
+    capabilities: { canTag: true, canNote: true }
+}`;
+
+export const entityNotes = [
+  {
+    field: "identity.url",
+    rule: "Первичный ключ (Primary Key) в chrome.storage.local. Извлекается из href, трекеры и параметры reply/thread/from отбрасываются.",
+    doc: "§I",
+  },
+  {
+    field: "CSS-классы VK",
+    rule: "vkit-*, Post__author, ui_wall_post — только OBSERVED. Использовать как ключи ЗАПРЕЩЕНО: хрупкие, минифицируются.",
+    doc: "§G",
+  },
+  {
+    field: "data-* атрибуты",
+    rule: "Диагностика 3A закрыла вопрос: идентификация — только по нормализованному href (/idNNN, /clubNNN, /wall±NNN_MMM, ?reply=&thread=). data-* для ключей не используются, vkit-* запрещены.",
+    doc: "§F, §5.7 · 3A CLOSED",
+  },
+  {
+    field: "sourceElement",
+    rule: "Живая ссылка на DOM-узел для отрисовки слоя. В background не передаётся — сообщение должно быть сериализуемым.",
+    doc: "§E",
+  },
+];
+
+/* ---------- шаблон задания v_01 (§7) ---------- */
+
+export const taskSheet = `МОДУЛЬ: M-01 · Контрольный каркас
+СБОРКА: v_01
+ЦЕЛЬ: Минимальный MV3-манифест, загрузка в Edge, запуск content.js на vk.ru
+
+ИЗМЕНЯЕМЫЕ ФАЙЛЫ:
+- EdgeExtension/manifest.json
+- EdgeExtension/src/background.js
+- EdgeExtension/src/content.js
+- EdgeExtension/icons/icon-16.png, icon-48.png, icon-128.png
+- reports/v_01/BUILD.md
+- reports/v_01/TEST.md
+
+АРХИТЕКТУРНЫЕ РЕШЕНИЯ:
+- Только Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2)
+- Собственный слой пока не рисуем: content.js лишь сигнализирует о запуске
+- Идентификация НЕ реализуется — до подтверждения гипотез на живом DOM (§5.7)
+- host_permissions ограничен https://vk.ru/* (§B)
+
+КАК СОБРАТЬ И ЗАГРУЗИТЬ:
+1. edge://extensions → включить «Режим разработчика»
+2. «Загрузить распакованное расширение» → выбрать папку EdgeExtension/
+3. Открыть https://vk.ru/ → DevTools (F12) → вкладка Console
+
+ТЕСТ (TEST.md):
+1. Предусловия: расширение видно в списке, в Service Worker нет ошибок
+2. Действия: открыть vk.ru, затем обновить страницу (F5)
+3. Ожидаемый результат (PASS): в консоли страницы строка
+   [CTX v_01] content script active on vk.ru
+
+СТОП. (Ожидание RESULT.md от Пользователя)`;
+
+/* ---------- фактические файлы шаблона ---------- */
+
+export const templateFiles = [
+  "index.html",
+  "package.json",
+  "vite.config.js",
+  "tsconfig.json",
+  "src/main.tsx",
+  "src/App.tsx",
+  "src/index.css",
+];
+
+/** Шаги чек-листа, уже выполненные самим процессом:
+ *  s3/s4 — артефакты v_01 созданы в шаге 1;
+ *  s5/s6 — ручной прогон в Edge и RESULT_v_01.md: PASS (18.08.2026). */
+export const stepsPreChecked = ["s3", "s4", "s5", "s6"];
+
+
++++ src/data/audit.ts (修改后)
+export type Status = "pass" | "warn" | "fail";
+
+export interface ReqItem {
+  id: string;
+  req: string;
+  status: Status;
+  note: string;
+  doc: string;
+  /** Пометка: артефакт появился в сборке v_XX (файл создан, полная функция — позже) */
+  since?: string;
+}
+
+export interface ReqGroup {
+  section: string;
+  title: string;
+  items: ReqItem[];
+}
+
+export const reqGroups: ReqGroup[] = [
+  {
+    section: "§B · §2.2",
+    title: "Границы и технологический стек",
+    items: [
+      {
+        id: "stack",
+        req: "Vanilla JS (ES6+), без фреймворков и npm-зависимостей",
+        status: "warn",
+        note: "Локальный репо — React 18 + Vite 6 + TypeScript + Tailwind 4 (плюс recharts, framer-motion, supabase-js). Регламент §2.2 и §5.3 прямо запрещают внешние библиотеки в расширении.",
+        doc: "РЕГЛАМЕНТ §2.2",
+      },
+      {
+        id: "mv3",
+        req: "Manifest V3, Service Worker, chrome.* API",
+        status: "fail",
+        note: "Ни manifest.json, ни одного вызова chrome.* в репозитории нет. Целевая среда — только desktop Edge и только vk.ru (§B, §2.1).",
+        doc: "architecture.md §B",
+      },
+    ],
+  },
+  {
+    section: "§D",
+    title: "Компоненты расширения",
+    items: [
+      {
+        id: "background",
+        req: "background.js — Service Worker (contextMenus, storage, маршрутизация)",
+        status: "fail",
+        note: "v_01: жизненный цикл. v_02: PING→PONG. v_03: приём ENTITY_FOUND + сводка в консоли SW. contextMenus/storage — по плану с v_10/v_12.",
+        doc: "architecture.md §D.3",
+        since: "v_01",
+      },
+      {
+        id: "content",
+        req: "content.js — точка входа Content Script (MutationObserver, делегирование адаптеру, инъекция UI-слоя)",
+        status: "fail",
+        note: "v_01: сигнал запуска. v_03: скан + debounced MutationObserver (600 мс) + дедупликация + отчёт ENTITY_FOUND. Инъекция UI-слоя — с v_07 по плану.",
+        doc: "architecture.md §D.1",
+        since: "v_01",
+      },
+      {
+        id: "adapter",
+        req: "adapters/vkru.js — обнаружение сущностей и нормализация в ENTITY",
+        status: "fail",
+        note: "Создан в v_03 по данным 3A: scan() только по data-testid, ключ — href. v_03: FAIL (частичный) — дефект передачи. v_03f: verbatim + coverage (0.0.4). v03f2: порче-невозможная реализация — селекторы через fromCharCode(95), посты по data-post-id, coverage-гейт (0.0.5, §25).",
+        doc: "architecture.md §D.2, РЕГЛАМЕНТ §5.7",
+        since: "v_03",
+      },
+      {
+        id: "storage",
+        req: "core/storage.js — абстракция над chrome.storage.local (плоское KV)",
+        status: "fail",
+        note: "Отсутствует. Модель — Map<IdentityURL, EntityRecord>, без реляционной структуры legacy (§K).",
+        doc: "architecture.md §D, §K",
+      },
+      {
+        id: "messaging",
+        req: "core/messaging.js — маршрутизация сообщений MV3",
+        status: "fail",
+        note: "v_02: CTX_MSG (PING/PONG), канал проверен. v_03: + ENTITY_FOUND (content → SW). Полная маршрутизация команд — с этапами 8–9.",
+        doc: "architecture.md §D, РЕГЛАМЕНТ ч.6",
+        since: "v_02",
+      },
+      {
+        id: "ui",
+        req: "ui/dialog.js + popup.js — диалог записи сущности и popup",
+        status: "fail",
+        note: "Отсутствуют, как и dialog.html / popup.html. Появляются на этапах 8–9 (v_09–v_10).",
+        doc: "architecture.md §D.4",
+      },
+      {
+        id: "layer",
+        req: "ui/layer.js — отрисовка маркеров (▲, цвет) в DOM",
+        status: "fail",
+        note: "Отсутствует. Принцип «собственного слоя»: соседние DOM-узлы, не модификация внутренностей VK (§H.1).",
+        doc: "architecture.md §D, §H",
+      },
+      {
+        id: "styles",
+        req: "styles.css — изолированные стили собственного слоя",
+        status: "fail",
+        note: "В репо есть только Tailwind-сборка шаблона. Нужны жёсткие селекторы вида .ctx-marker-*, иначе покрасится весь VK (§H, прим. 3 к регламенту).",
+        doc: "architecture.md §D.5",
+      },
+    ],
+  },
+  {
+    section: "§E · §F–I",
+    title: "Контракт данных и идентификация",
+    items: [
+      {
+        id: "entity",
+        req: "ENTITY-контракт зафиксирован в коде (type / identity / context / sourceElement / capabilities)",
+        status: "fail",
+        note: "Нигде не объявлен. Контракт заморожен в части 3 регламента и не может меняться без согласования.",
+        doc: "РЕГЛАМЕНТ ч.3",
+      },
+      {
+        id: "navtarget",
+        req: "Идентификация по navigation target (href) — первичный ключ",
+        status: "fail",
+        note: "Не реализована. CSS-классы VK (vkit-*, Post__author) — только OBSERVED, ключами быть не могут (§G). data-* атрибуты — HYPOTHESIS, ждут проверки на живом DOM.",
+        doc: "architecture.md §F–I",
+      },
+      {
+        id: "ctxmenu",
+        req: "Сценарий ПКМ / выделение через chrome.contextMenus + selectionchange",
+        status: "fail",
+        note: "Не реализован. Этап 9 (v_10) — после появления диалога.",
+        doc: "architecture.md §J",
+      },
+    ],
+  },
+  {
+    section: "§K",
+    title: "Отказ от Legacy",
+    items: [
+      {
+        id: "legacy",
+        req: "Старая логика НЕ перенесена: Handlers Map, ranks/histatuses, 6 доменов, массовый сбор",
+        status: "pass",
+        note: "Выполнено — тривиально: переносить в пустом репозитории пока нечего. Важно не нарушить при старте: из старого кода берутся только идеи.",
+        doc: "architecture.md §K, РЕГЛАМЕНТ §1.2.3",
+      },
+    ],
+  },
+  {
+    section: "§L · §2.3",
+    title: "Структура каталогов",
+    items: [
+      {
+        id: "root",
+        req: "EdgeExtension/ — корень расширения (загружается в Edge в режиме разработчика)",
+        status: "fail",
+        note: "Создан в шаге 1: manifest.json + src/. Vite-шаблон вынесен за пределы пакета, в Edge загружается только EdgeExtension/.",
+        doc: "architecture.md §L",
+        since: "v_01",
+      },
+      {
+        id: "manifest-files",
+        req: "manifest.json, popup.html, dialog.html, icons/ (16, 48, 128)",
+        status: "fail",
+        note: "manifest.json создан (MV3, 0.0.1). popup.html / dialog.html — этапы 8–9; фирменные иконки 16/48/128 — косметика после PASS (сейчас штатная).",
+        doc: "architecture.md §L",
+        since: "v_01",
+      },
+      {
+        id: "scripts",
+        req: "scripts/ — Build.ps1, Clean.ps1, Test.ps1 (PowerShell)",
+        status: "fail",
+        note: "Созданы Build.ps1 / Clean.ps1 / Test.ps1 (состав v_01). Целевая ОС — Windows 10/11 (§2.1).",
+        doc: "architecture.md §L",
+        since: "v_01",
+      },
+      {
+        id: "reports",
+        req: "reports/ — артефакты сборок: v_XX/{BUILD.md, TEST.md, RESULT.md}",
+        status: "fail",
+        note: "Создана: reports/v_01/{BUILD.md, TEST.md, RESULT.md}. Вердикт RESULT.md — только от Пользователя (§5.6).",
+        doc: "РЕГЛАМЕНТ ч.4",
+        since: "v_01",
+      },
+      {
+        id: "docs",
+        req: "docs/ — локальные копии architecture.md и РЕГЛАМЕНТ_РАБОТ v2.0",
+        status: "fail",
+        note: "Документы есть в удалённом репозитории, но в локальном рабочем репо их нет — источник истины должен лежать рядом с кодом.",
+        doc: "architecture.md §L",
+      },
+    ],
+  },
+];
+
+export const allItems = reqGroups.flatMap((g) => g.items);
+export const counts = {
+  pass: allItems.filter((i) => i.status === "pass").length,
+  warn: allItems.filter((i) => i.status === "warn").length,
+  fail: allItems.filter((i) => i.status === "fail").length,
+  total: allItems.length,
+};
+export const scorePct = Math.round((counts.pass / counts.total) * 100);
+
+/* ---------- дорожная карта v_01 — v_15 ---------- */
+
+export interface Stage {
+  v: string;
+  num: number;
+  title: string;
+  goal: string;
+  pass: string;
+  tag?: "диагностика" | "адаптер" | "UI-слой" | "данные";
+  state?: "done" | "current";
+}
+
+export const stages: Stage[] = [
+  {
+    v: "v_01",
+    num: 0,
+    title: "Контрольный каркас",
+    goal: "Минимальный MV3-манифест, загрузка распакованного расширения в Edge, запуск content.js на https://vk.ru/.",
+    pass: "Расширение видимо в edge://extensions без ошибок; на vk.ru в консоли страницы появляется маркер запуска content.js.",
+    state: "done",
+  },
+  {
+    v: "v_02",
+    num: 1,
+    title: "Диагностический канал",
+    goal: "Обмен сообщениями PING/PONG между content.js и background.js (Service Worker) через chrome.runtime.",
+    pass: "PING из content-скрипта достигает SW и возвращается PONG; оба события логируются.",
+    state: "done",
+  },
+  {
+    v: "v_03",
+    num: 2,
+    title: "VK.RU Adapter: обнаружение",
+    goal: "Поиск sourceElement в DOM. Обязательно сопровождается snippet'ом для консоли DevTools — проверка гипотез на живой странице.",
+    pass: "Пользователь подтвердил вывод диагностики; адаптер находит контейнер сущности по семантическим признакам (href, role, data-*).",
+    tag: "диагностика",
+    state: "current",
+  },
+  {
+    v: "v_04",
+    num: 3,
+    title: "Navigation Target",
+    goal: "Извлечение href ближайшей релевантной ссылки, нормализация URL: отбрасывание GET-параметров (reply, thread, from) и трекеров.",
+    pass: "Для /id123, /club456, /wall-123_456 извлекается устойчивое семантическое ядро URL.",
+    tag: "адаптер",
+  },
+  {
+    v: "v_05",
+    num: 4,
+    title: "Нормализатор ENTITY",
+    goal: "Формирование объекта ENTITY строго по контракту части 3 регламента.",
+    pass: "Объект содержит все обязательные поля; sourceElement не сериализуется при передаче в background.",
+    tag: "адаптер",
+  },
+  {
+    v: "v_06",
+    num: 5,
+    title: "Контекст",
+    goal: "Привязка сущности к родителю: context.source (comment / post / sidebar), parentPostId, threadId.",
+    pass: "Автор комментария получает корректные parentPostId и threadId.",
+    tag: "адаптер",
+  },
+  {
+    v: "v_07",
+    num: 6,
+    title: "Собственный визуальный слой",
+    goal: "Инъекция диагностического маркера [ENTITY] через styles.css. Проверка изоляции: стили VK не задеты, классы — только .ctx-*.",
+    pass: "Маркер виден у найденных сущностей; верстка vk.ru не изменилась.",
+    tag: "UI-слой",
+  },
+  {
+    v: "v_08",
+    num: 7,
+    title: "Треугольник ▲",
+    goal: "Замена маркера на ▲. MutationObserver следит за SPA-навигацией и подгрузкой комментариев, маркеры перепривязываются.",
+    pass: "После SPA-перехода и подгрузки новых комментариев маркеры появляются без перезагрузки страницы.",
+    tag: "UI-слой",
+  },
+  {
+    v: "v_09",
+    num: 8,
+    title: "Действие по треугольнику",
+    goal: "Клик по маркеру открывает dialog.html с предзаполненными ENTITY-данными.",
+    pass: "Диалог открывается с корректными type / id / контекстом.",
+    tag: "UI-слой",
+  },
+  {
+    v: "v_10",
+    num: 9,
+    title: "ПКМ / выделение",
+    goal: "Интеграция chrome.contextMenus + selectionchange: пункт «Context: Записать сущность» по выделенному нику.",
+    pass: "Выделение ника → ПКМ → пункт меню запрашивает активный ENTITY у content.js и открывает диалог.",
+  },
+  {
+    v: "v_11",
+    num: 10,
+    title: "Сохранение",
+    goal: "Запись EntityRecord в chrome.storage.local, ключ — нормализованный identity.url.",
+    pass: "Запись переживает перезагрузку страницы и перезапуск браузера; маркер отрисовывается из хранилища.",
+    tag: "данные",
+  },
+  {
+    v: "v_12",
+    num: 11,
+    title: "Маркеры: тип и цвет",
+    goal: "Назначение маркера (треугольник, цвет) из диалога, мгновенная перерисовка слоя.",
+    pass: "Смена цвета/типа сохраняется и отрисовывается без перезагрузки.",
+    tag: "данные",
+  },
+  {
+    v: "v_13",
+    num: 12,
+    title: "Примечания",
+    goal: "Текстовые заметки к сущности, редактирование, отображение в popup.",
+    pass: "Заметка сохраняется и доступна из popup по ключу identity.url.",
+    tag: "данные",
+  },
+  {
+    v: "v_14",
+    num: 13,
+    title: "Календарь / даты",
+    goal: "Даты в записях сущностей, фильтрация в popup по свежести.",
+    pass: "Даты фиксируются при сохранении и корректно отображаются.",
+    tag: "данные",
+  },
+  {
+    v: "v_15",
+    num: 14,
+    title: "Финальная интеграция",
+    goal: "Сборка всех модулей, чистка, scripts/Build.ps1, итоговые отчёты, подготовка к повседневному использованию.",
+    pass: "Полный сценарий «нашёл → пометил → заметил → нашёл снова» работает на vk.ru от начала до конца.",
+  },
+];
+
+/* ---------- шаги запуска ---------- */
+
+export interface Step {
+  id: string;
+  text: string;
+  detail: string;
+}
+
+export const steps: Step[] = [
+  {
+    id: "s1",
+    text: "Зафиксировать устав проекта локально",
+    detail:
+      "Скопировать docs/architecture.md и РЕГЛАМЕНТ_РАБОТ_v2_0.md в локальный каталог docs/. Оба документа — единственный источник истины; любая новая LLM-сессия начинает с них.",
+  },
+  {
+    id: "s2",
+    text: "Развести корни: EdgeExtension/ и шаблон",
+    detail:
+      "Создать структуру по §L: EdgeExtension/, scripts/, reports/, docs/, .vscode/. Vite/React-шаблон не должен попадать в корень, загружаемый в Edge: либо архивировать, либо оставить отдельным инструментом (например, этим дашбордом).",
+  },
+  {
+    id: "s3",
+    text: "Подготовить артефакты v_01",
+    detail:
+      "manifest.json (MV3: name, version 0.0.1, host_permissions: https://vk.ru/*, background.service_worker, content_scripts), заглушки background.js и content.js, иконки 16/48/128 px.",
+  },
+  {
+    id: "s4",
+    text: "Оформить отчётную папку reports/v_01/",
+    detail:
+      "BUILD.md (что собрано) и TEST.md по шаблону: предусловия → действия → PASS-критерии. Инструкцию по загрузке писать для «распакованного расширения» в Edge.",
+  },
+  {
+    id: "s5",
+    text: "Прогнать Этап 0 руками в Edge",
+    detail:
+      "edge://extensions → «Режим разработчика» → «Загрузить распакованное расширение» → папка EdgeExtension/ → открыть https://vk.ru/ и проверить консоль страницы.",
+  },
+  {
+    id: "s6",
+    text: "Записать RESULT.md и дождаться PASS",
+    detail:
+      "Статус устанавливает только Пользователь (§5.6). При FAIL/BLOCKED — работаем внутри v_01, перескакивать запрещено (§4, §5.1). Только после PASS открываем v_02 (PING/PONG).",
+  },
+  {
+    id: "s7",
+    text: "Заготовить диагностику для vkru.js",
+    detail:
+      "До Этапа 2 (v_03) подготовить snippet для консоли DevTools vk.ru: проверка HYPOTHESIS о data-* атрибутах и структуре ссылок (§5.7, §F). Адаптер пишется только по подтверждённым данным.",
+  },
+];
+
+/* ---------- терминал ---------- */
+
+export interface TermLine {
+  type: "cmd" | "fail" | "warn" | "pass" | "info" | "arrow";
+  text: string;
+}
+
+export const termLines: TermLine[] = [
+  { type: "cmd", text: "context-vkru — сверка локального репо с docs/" },
+  { type: "info", text: "источник: architecture.md (шаг 1) + РЕГЛАМЕНТ_РАБОТ v2.0" },
+  { type: "fail", text: "EdgeExtension/ .................... отсутствует" },
+  { type: "fail", text: "manifest.json (MV3) ............... отсутствует" },
+  { type: "fail", text: "background.js / content.js ........ отсутствует" },
+  { type: "fail", text: "adapters/vkru.js .................. отсутствует (§E не реализован)" },
+  { type: "fail", text: "core/ · ui/ · styles.css .......... отсутствует" },
+  { type: "fail", text: "scripts/ · reports/ · docs/ ....... отсутствует (§L)" },
+  { type: "warn", text: "стек: React+Vite+TS+Tailwind ↔ Vanilla JS (§2.2)" },
+  { type: "pass", text: "§K: legacy-логика не перенесена .... тривиально PASS" },
+  { type: "arrow", text: "итог: 1 PASS · 1 WARN · 15 FAIL → соответствие 6%" },
+  { type: "arrow", text: "режим: готов к Этапу 0 — сборка v_01 «Контрольный каркас»" },
+  { type: "pass", text: "шаг 1: EdgeExtension/ создан — manifest · background · content" },
+  { type: "pass", text: "шаг 1: reports/v_01/ + scripts/ на месте (BUILD · TEST · RESULT)" },
+  { type: "pass", text: "RESULT_v_01.md: PASS от Пользователя (18.08.2026) — v_01 закрыт" },
+  { type: "pass", text: "шаг 2: v_02 — core/messaging.js · PING/PONG · default_locale: ru" },
+  { type: "pass", text: "RESULT_v_02.md: PASS от Пользователя (19.08.2026) — v_02 закрыт" },
+  { type: "pass", text: "3A ЗАКРЫТ: data-testid CONFIRMED · href — ключ · vkit-* не используются" },
+  { type: "pass", text: "шаг 3: v_03 — adapters/vkru.js · ENTITY_FOUND · MutationObserver 600 мс" },
+  { type: "fail", text: "RESULT v_03: FAIL (частичный) — markdown съел подчёркивания при передаче" },
+  { type: "pass", text: "фикс v_03f (0.0.4): verbatim-селекторы · coverage posts/dates/roots · РЕПО-ГЕЙТ" },
+  { type: "fail", text: "3C: прод повреждён — dates=168 / roots=0 · verbatim-передачи недостаточно" },
+  { type: "pass", text: "v03f2 (0.0.5): селекторы через fromCharCode(95) · посты по data-post-id" },
+  { type: "arrow", text: "гейт: coverage roots>0 (ожидание 4/168/168) · §25 регламента" },
+  { type: "cmd", text: "ожидание RESULT_v_03.md (fix2)_" },
+];
+
+/* ---------- конфликт стека ---------- */
+
+export const stackLocal = [
+  "React 18 + react-dom + react-router",
+  "Vite 6 + TypeScript 5",
+  "Tailwind CSS 4",
+  "recharts · framer-motion · dnd-kit",
+  "supabase-js · uuid · date-fns",
+];
+
+export const stackTarget = [
+  "Vanilla JS (ES6+), 0 зависимостей",
+  "Manifest V3 · Service Worker",
+  "chrome.storage.local · contextMenus · runtime",
+  "MutationObserver + нативный DOM",
+  "Native HTML/CSS/JS, PowerShell-скрипты",
+];
+
+/* ---------- контракт ENTITY ---------- */
+
+export const entityContract = `// ENTITY CONTRACT  (РЕГЛАМЕНТ, часть 3 — заморожен)
+{
+    type: "PERSON" | "COMMUNITY" | "COMMENT_AUTHOR" | "POST_AUTHOR",
+    identity: {
+        id: "string",    // устойчивый ID из URL: "id123", "club456", "wall-123_456"
+        url: "string",   // нормализованный Navigation Target (без GET-параметров)
+    },
+    context: {
+        source: "comment" | "post" | "sidebar",
+        parentPostId: "string | null",
+        threadId: "string | null"
+    },
+    sourceElement: HTMLElement,  // только для content.js — НЕ сериализуется
+    capabilities: { canTag: true, canNote: true }
+}`;
+
+export const entityNotes = [
+  {
+    field: "identity.url",
+    rule: "Первичный ключ (Primary Key) в chrome.storage.local. Извлекается из href, трекеры и параметры reply/thread/from отбрасываются.",
+    doc: "§I",
+  },
+  {
+    field: "CSS-классы VK",
+    rule: "vkit-*, Post__author, ui_wall_post — только OBSERVED. Использовать как ключи ЗАПРЕЩЕНО: хрупкие, минифицируются.",
+    doc: "§G",
+  },
+  {
+    field: "data-* атрибуты",
+    rule: "Диагностика 3A закрыла вопрос: идентификация — только по нормализованному href (/idNNN, /clubNNN, /wall±NNN_MMM, ?reply=&thread=). data-* для ключей не используются, vkit-* запрещены.",
+    doc: "§F, §5.7 · 3A CLOSED",
+  },
+  {
+    field: "sourceElement",
+    rule: "Живая ссылка на DOM-узел для отрисовки слоя. В background не передаётся — сообщение должно быть сериализуемым.",
+    doc: "§E",
+  },
+];
+
+/* ---------- шаблон задания v_01 (§7) ---------- */
+
+export const taskSheet = `МОДУЛЬ: M-01 · Контрольный каркас
+СБОРКА: v_01
+ЦЕЛЬ: Минимальный MV3-манифест, загрузка в Edge, запуск content.js на vk.ru
+
+ИЗМЕНЯЕМЫЕ ФАЙЛЫ:
+- EdgeExtension/manifest.json
+- EdgeExtension/src/background.js
+- EdgeExtension/src/content.js
+- EdgeExtension/icons/icon-16.png, icon-48.png, icon-128.png
+- reports/v_01/BUILD.md
+- reports/v_01/TEST.md
+
+АРХИТЕКТУРНЫЕ РЕШЕНИЯ:
+- Только Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2)
+- Собственный слой пока не рисуем: content.js лишь сигнализирует о запуске
+- Идентификация НЕ реализуется — до подтверждения гипотез на живом DOM (§5.7)
+- host_permissions ограничен https://vk.ru/* (§B)
+
+КАК СОБРАТЬ И ЗАГРУЗИТЬ:
+1. edge://extensions → включить «Режим разработчика»
+2. «Загрузить распакованное расширение» → выбрать папку EdgeExtension/
+3. Открыть https://vk.ru/ → DevTools (F12) → вкладка Console
+
+ТЕСТ (TEST.md):
+1. Предусловия: расширение видно в списке, в Service Worker нет ошибок
+2. Действия: открыть vk.ru, затем обновить страницу (F5)
+3. Ожидаемый результат (PASS): в консоли страницы строка
+   [CTX v_01] content script active on vk.ru
+
+СТОП. (Ожидание RESULT.md от Пользователя)`;
+
+/* ---------- фактические файлы шаблона ---------- */
+
+export const templateFiles = [
+  "index.html",
+  "package.json",
+  "vite.config.js",
+  "tsconfig.json",
+  "src/main.tsx",
+  "src/App.tsx",
+  "src/index.css",
+];
+
+/** Шаги чек-листа, уже выполненные самим процессом:
+ *  s3/s4 — артефакты v_01 созданы в шаге 1;
+ *  s5/s6 — ручной прогон в Edge и RESULT_v_01.md: PASS (18.08.2026). */
+export const stepsPreChecked = ["s3", "s4", "s5", "s6"];
+
