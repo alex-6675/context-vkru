@@ -1,21 +1,19 @@
-/* Context VK.RU · core/messaging.js · v03f2
+/* Context VK.RU · core/messaging.js · v03r
  * Общие константы сообщений (MV3 message passing).
  *
- * v_02: PING/PONG. v_03: + ENTITY_FOUND.
- * v03f2: номер сборки; имена констант и типы сообщений БЕЗ ИЗМЕНЕНИЙ
- * (background.js не меняется — совместимость обязательна).
+ * Переворот архитектуры №2 (M03r.md): массового сканирования больше нет —
+ * расширение молчит, пока пользователь не скажет «вот этот» (ПКМ).
+ * Единственный тип сообщения — CAPTURED (background -> content).
  *
- * Подключение: в content-скрипты — манифестом, ПЕРЕД остальными файлами;
+ * Подключение: в content-скрипты — манифестом, ПЕРЕД content.js;
  * в Service Worker — importScripts("./core/messaging.js").
  * Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2).
  */
 
-const CTX_BUILD = "v03f2";
+const CTX_BUILD = "v03r";
 
 const CTX_MSG = Object.freeze({
-  PING: "ctx:ping",
-  PONG: "ctx:pong",
-  ENTITY_FOUND: "ctx:entity-found",
+  CAPTURED: "ctx:captured",
 });
 
 globalThis.CTX_BUILD = CTX_BUILD;

@@ -61,7 +61,7 @@ export const reqGroups: ReqGroup[] = [
         id: "adapter",
         req: "adapters/vkru.js — обнаружение сущностей и нормализация в ENTITY",
         status: "fail",
-        note: "Создан в v_03 по данным диагностики 3A: scan() только по data-testid, идентификация только по href, ENTITY-контракт. §F закрыт: ключ — нормализованный href, не data-* и не vkit-*.",
+        note: "Создан в v_03 по данным 3A: scan() только по data-testid, ключ — href. v_03: FAIL (частичный) — дефект передачи. v_03f: verbatim + coverage (0.0.4). v03f2: селекторы через fromCharCode(95), data-post-id (0.0.5, §25). Решение №2 (M03r): снят с инжекции — остаётся в репо для нормализатора (v_04r) и маркировки (v_06r).",
         doc: "architecture.md §D.2, РЕГЛАМЕНТ §5.7",
         since: "v_03",
       },
@@ -413,8 +413,13 @@ export const termLines: TermLine[] = [
   { type: "pass", text: "RESULT_v_02.md: PASS от Пользователя (19.08.2026) — v_02 закрыт" },
   { type: "pass", text: "3A ЗАКРЫТ: data-testid CONFIRMED · href — ключ · vkit-* не используются" },
   { type: "pass", text: "шаг 3: v_03 — adapters/vkru.js · ENTITY_FOUND · MutationObserver 600 мс" },
-  { type: "arrow", text: "статус: v_03 собран — ожидает ручной проверки в Edge" },
-  { type: "cmd", text: "ожидание RESULT_v_03.md_" },
+  { type: "fail", text: "RESULT v_03: FAIL (частичный) — markdown съел подчёркивания при передаче" },
+  { type: "pass", text: "фикс v_03f (0.0.4): verbatim-селекторы · coverage posts/dates/roots · РЕПО-ГЕЙТ" },
+  { type: "fail", text: "3C: прод повреждён — dates=168 / roots=0 · verbatim-передачи недостаточно" },
+  { type: "pass", text: "v03f2 (0.0.5): селекторы через fromCharCode(95) · посты по data-post-id" },
+  { type: "arrow", text: "РЕШЕНИЕ №2 (M03r.md): переворот — изъятие в момент фиксации вместо сканирования" },
+  { type: "pass", text: "v03r (0.0.6): contextMenus · ctx:captured · сканеры и MutationObserver сняты" },
+  { type: "cmd", text: "ожидание RESULT_v03r.md_" },
 ];
 
 /* ---------- конфликт стека ---------- */
