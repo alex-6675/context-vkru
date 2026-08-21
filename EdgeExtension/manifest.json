@@ -3,15 +3,15 @@
   "name": "__MSG_extName__",
   "description": "__MSG_extDescription__",
   "default_locale": "ru",
-  "version": "0.0.7",
-  "permissions": ["contextMenus"],
+  "version": "0.0.8",
+  "permissions": ["contextMenus", "storage"],
   "background": {
     "service_worker": "src/background.js"
   },
   "content_scripts": [
     {
       "matches": ["https://vk.ru/*"],
-      "js": ["src/core/messaging.js", "src/content.js"],
+      "js": ["src/core/messaging.js", "src/core/storage.js", "src/content.js"],
       "run_at": "document_idle"
     }
   ],

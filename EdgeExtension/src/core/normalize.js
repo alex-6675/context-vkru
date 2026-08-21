@@ -1,8 +1,9 @@
-/* Context VK.RU · core/normalize.js · v04r
- * Нормализатор и опознание портала (TASK-0006, по M03r.md).
- * Работает только со ссылками, которые отдал браузер (Решение №2):
- * linkUrl — удостоверение, pageUrl — адрес встречи (metPost).
- * Regex с подчёркиванием собраны через U = String.fromCharCode(95) (А1, §25).
+/* Context VK.RU · core/normalize.js · v05r
+ * Нормализатор и опознание портала.
+ * v04r: portalOf / normalize / metPostOf.
+ * v05r: короткие id БЕЗ ведущего слэша; metPostOf: значение w= матчится
+ * regex без "^/" (через U, по А1).
+ * Regex с подчёркиванием собраны через U = String.fromCharCode(95).
  * Vanilla JS, ноль зависимостей (§2.2).
  */
 (function () {
@@ -11,6 +12,7 @@
   var RE_ID = /^\/id(\d+)$/;
   var RE_CLUB = /^\/club(\d+)$/;
   var RE_WALL = new RegExp("^/wall(-?\\d+)" + U + "(\\d+)$");
+  var RE_WALL_BARE = new RegExp("^wall(-?\\d+)" + U + "(\\d+)$");
 
   function hostOf(url) {
     try { return new URL(url).hostname; } catch (e) { return ""; }
@@ -25,7 +27,7 @@
     return "generic";
   }
 
-  /* Нормализация id из ссылки. Тип — НЕ отсюда: тип даёт пункт меню. */
+  /* Нормализация id из ссылки. Тип — из пункта меню. id — без ведущего "/". */
   function normalize(link, menu) {
     var portal = portalOf(link);
     var path = "";
@@ -37,16 +39,17 @@
       else if ((m = path.match(RE_CLUB))) id = "club" + m[1];
       else if ((m = path.match(RE_WALL))) id = "wall" + m[1] + U + m[2];
     }
+    if (id && id.charAt(0) === "/") id = id.slice(1);
     var type = menu === "save-community" ? "COMMUNITY" : "PERSON";
     return { portal: portal, id: id, type: type, url: link };
   }
 
-  /* Адрес встречи: wall-пост из pageUrl (путь или ?w=), иначе путь страницы. */
+  /* Адрес встречи: wall-пост из пути pageUrl или из значения w= (без "/"). */
   function metPostOf(page) {
     try {
       var u = new URL(page);
       var m = u.pathname.match(RE_WALL);
-      if (!m) m = (u.searchParams.get("w") || "").match(RE_WALL);
+      if (!m) m = (u.searchParams.get("w") || "").match(RE_WALL_BARE);
       if (m) return "wall" + m[1] + U + m[2];
       return u.pathname;
     } catch (e) { return page || ""; }
