@@ -6,12 +6,13 @@ import Reveal from "./Reveal";
 const execOrder = [
   { id: "TASK-0001", area: "feat(ext)", what: "v03r — фундамент: ПКМ, изъятие linkUrl", state: "DONE · PASS · 90d704e", done: true },
   { id: "TASK-0003", area: "docs", what: "AGENTS.md — Дополнения А (А1–А6) и Б (Б1–Б4)", state: "DONE · a4b6ec9", done: true },
-  { id: "TASK-0007", area: "fix(dashboard)", what: "ремонт дашборда: data-модули, статусы, порядок группы", state: "DONE · 4c307da + 9c104be", done: true },
   { id: "TASK-0006", area: "feat(ext)", what: "v04r — нормализатор + опознание портала (r-серия)", state: "DONE · PASS · 9c104be", done: true },
+  { id: "TASK-0007", area: "fix(dashboard)", what: "ремонт дашборда: data-модули, статусы, порядок группы", state: "частично · 4c307da · ждёт хэш репо-фиксации (Б5)", done: false },
+  { id: "TASK-0009", area: "feat(ext)", what: "v05r — база, карточка v2, дедуп (ГЛАВНЫЙ ПОТОК)", state: "ждёт текст задания проектировщика", done: false },
   { id: "TASK-0002", area: "chore(infra)", what: "RunEdgeCdp.ps1 · .gitignore · tasks/launch · opencode.jsonc", state: "очередь", done: false },
   { id: "TASK-0005", area: "chore(env)", what: ".vscode — отдельным коммитом, не смешивая с ext/дашбордом", state: "очередь", done: false },
-  { id: "TASK-0004", area: "style(dashboard)", what: "строгий деловой дизайн, референс Gmail (только после 0007)", state: "очередь", done: false },
-  { id: "TASK-0008", area: "docs", what: "гигиена docs/tasks — хэши, формат", state: "очередь", done: false },
+  { id: "TASK-0008", area: "docs", what: "гигиена docs/tasks — хэши, формат, убрать «修改后»", state: "очередь", done: false },
+  { id: "TASK-0004", area: "style(dashboard)", what: "строгий деловой дизайн, референс Gmail", state: "очередь · последним, после всех", done: false },
 ];
 
 export default function TaskRegistry() {
@@ -232,8 +233,8 @@ export default function TaskRegistry() {
               Коммиты — conventional с тегом{" "}
               <span className="font-mono text-[11px] text-dim">[TASK-XXXX]</span>; файлы группы —{" "}
               <span className="font-mono text-[11px] text-dim">docs/tasks/TASK-000X.md</span>{" "}
-              (статус NEW → DONE, хэш — при пуше). Внеплановые: TASK-0006 (ремонт дашборда),
-              TASK-0007, TASK-0008 (гигиена docs/tasks).
+              (статус NEW → DONE, хэш — при пуше). Главный поток — TASK-0009 (v05r). Б5: статус
+              DONE — только после хэша пользователя (факт = репо).
             </p>
           </div>
         </Reveal>

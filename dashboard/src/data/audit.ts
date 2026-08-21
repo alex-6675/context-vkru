@@ -423,10 +423,11 @@ export const termLines: TermLine[] = [
   { type: "arrow", text: "TASK-0001 feat(ext) M-03r · 0002 infra · 0003 AGENTS Доп.А · 0004 Gmail-стиль · 0005 .vscode" },
   { type: "pass", text: "RESULT_v03r.md: PASS от Пользователя (2026-08-20) — TASK-0001 DONE" },
   { type: "pass", text: "TASK-0003: AGENTS.md — Дополнения А (А1–А6) + Б (Б1–Б4) · DONE · a4b6ec9" },
-  { type: "pass", text: "TASK-0007: ремонт дашборда — data-модули, статусы · DONE · 4c307da + 9c104be" },
   { type: "pass", text: "TASK-0006: v04r нормализатор (fromCharCode 95 · тип из меню · metPost) · DONE · PASS · 9c104be" },
-  { type: "arrow", text: "закрыто 4 из 8 · в очереди: 0002 infra · 0005 env · 0004 Gmail-стиль · 0008 гигиена" },
-  { type: "cmd", text: "ожидание служебной сводки проектировщика_" },
+  { type: "warn", text: "TASK-0007: ремонт дашборда — ЧАСТИЧНО (4c307da): файлы в репо отсутствуют (404), ждёт хэш" },
+  { type: "arrow", text: "Б5: факт = репо пользователя · DONE только после хэша · содержимое выдано код-блоками" },
+  { type: "arrow", text: "закрыто 3 из 9 · главный поток TASK-0009 (v05r) ждёт текст · очередь: 0002 · 0005 · 0008 · 0004" },
+  { type: "cmd", text: "ожидание текста задания TASK-0009_" },
 ];
 
 /* ---------- конфликт стека ---------- */
