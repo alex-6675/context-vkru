@@ -422,7 +422,11 @@ export const termLines: TermLine[] = [
   { type: "pass", text: "группа заданий заполнена: TASK-0001…0005 · conventional commits [TASK-XXXX]" },
   { type: "arrow", text: "TASK-0001 feat(ext) M-03r · 0002 infra · 0003 AGENTS Доп.А · 0004 Gmail-стиль · 0005 .vscode" },
   { type: "pass", text: "RESULT_v03r.md: PASS от Пользователя (2026-08-20) — TASK-0001 DONE" },
-  { type: "cmd", text: "TASK-0002 (chore: infra) — выдача за проектировщиком_" },
+  { type: "pass", text: "TASK-0003: AGENTS.md — Дополнения А (А1–А6) + Б (Б1–Б4) · DONE · a4b6ec9" },
+  { type: "pass", text: "TASK-0007: ремонт дашборда — data-модули, статусы · DONE · 4c307da + 9c104be" },
+  { type: "pass", text: "TASK-0006: v04r нормализатор (fromCharCode 95 · тип из меню · metPost) · DONE · PASS · 9c104be" },
+  { type: "arrow", text: "закрыто 4 из 8 · в очереди: 0002 infra · 0005 env · 0004 Gmail-стиль · 0008 гигиена" },
+  { type: "cmd", text: "ожидание служебной сводки проектировщика_" },
 ];
 
 /* ---------- конфликт стека ---------- */

@@ -148,8 +148,8 @@ export const tasks: TaskItem[] = [
     module: "M-04r · EdgeExtension",
     commit: "feat(ext): v04r — нормализатор и опознание портала [TASK-0006]",
     title: "v04r: нормализатор + опознание портала (тип из меню, metPost из page)",
-    status: "done-wait",
-    statusLabel: "исполнено · ждёт RESULT_v04r.md",
+    status: "done-pass",
+    statusLabel: "DONE · PASS · 9c104be",
     dep: "TASK-0001 = PASS",
     goal: "Из изъятой браузером ссылки — удостоверение {portal, id, url} + тип из пункта меню + metPost из pageUrl. Порталы vk / ok / dzen / generic по одному контракту; vk-схемы idN/clubN/wall — regex через String.fromCharCode(95).",
     files: [

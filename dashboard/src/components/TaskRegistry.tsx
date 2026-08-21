@@ -4,13 +4,14 @@ import Reveal from "./Reveal";
 
 /* Порядок исполнения группы (docs/tasks/TASK-000X.md) */
 const execOrder = [
-  { id: "TASK-0001", area: "feat(ext)", what: "v03r — фундамент: ПКМ, изъятие linkUrl", state: "DONE · PASS", done: true },
+  { id: "TASK-0001", area: "feat(ext)", what: "v03r — фундамент: ПКМ, изъятие linkUrl", state: "DONE · PASS · 90d704e", done: true },
   { id: "TASK-0003", area: "docs", what: "AGENTS.md — Дополнения А (А1–А6) и Б (Б1–Б4)", state: "DONE · a4b6ec9", done: true },
-  { id: "TASK-0007", area: "fix(dashboard)", what: "ремонт дашборда: data-модули, статусы, порядок группы", state: "DONE · 4c307da + завершение", done: true },
-  { id: "TASK-0006", area: "feat(ext)", what: "v04r — нормализатор + опознание портала (r-серия)", state: "исполнено · ждёт RESULT", done: false },
+  { id: "TASK-0007", area: "fix(dashboard)", what: "ремонт дашборда: data-модули, статусы, порядок группы", state: "DONE · 4c307da + 9c104be", done: true },
+  { id: "TASK-0006", area: "feat(ext)", what: "v04r — нормализатор + опознание портала (r-серия)", state: "DONE · PASS · 9c104be", done: true },
   { id: "TASK-0002", area: "chore(infra)", what: "RunEdgeCdp.ps1 · .gitignore · tasks/launch · opencode.jsonc", state: "очередь", done: false },
   { id: "TASK-0005", area: "chore(env)", what: ".vscode — отдельным коммитом, не смешивая с ext/дашбордом", state: "очередь", done: false },
   { id: "TASK-0004", area: "style(dashboard)", what: "строгий деловой дизайн, референс Gmail (только после 0007)", state: "очередь", done: false },
+  { id: "TASK-0008", area: "docs", what: "гигиена docs/tasks — хэши, формат", state: "очередь", done: false },
 ];
 
 export default function TaskRegistry() {
@@ -173,6 +174,27 @@ export default function TaskRegistry() {
             <h3 className="font-display text-[15px] font-semibold text-ink">
               Порядок исполнения группы
             </h3>
+            {(() => {
+              const doneCount = execOrder.filter((r) => r.done).length;
+              const pct = Math.round((doneCount / execOrder.length) * 100);
+              return (
+                <div className="mt-3">
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-mono text-[11px] text-dim">
+                      закрыто <span className="font-bold text-pass">{doneCount}</span> из{" "}
+                      {execOrder.length}
+                    </span>
+                    <span className="font-mono text-[11px] font-bold text-steel">{pct}%</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-line">
+                    <div
+                      className="progress-fill h-full rounded-full bg-gradient-to-r from-pass to-steel"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
             <div className="mt-3 space-y-1.5">
               {execOrder.map((row, i) => (
                 <div
