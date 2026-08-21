@@ -30,7 +30,7 @@ export const tasks: TaskItem[] = [
     commit: "feat(ext): M-03r — ПКМ «Сохранить персонажа/сообщество», изъятие linkUrl [TASK-0001]",
     title: "ПКМ: изъятие ссылки в момент фиксации (фундамент)",
     status: "done-pass",
-    statusLabel: "DONE · PASS · RESULT_v03r.md",
+    statusLabel: "DONE · PASS · 90d704e",
     dep: "—",
     goal: "Доказать: браузер в момент ПКМ сам отдаёт ссылку сущности (info.linkUrl / pageUrl). Никакого массового сканирования — только действие пользователя.",
     files: [
@@ -173,7 +173,7 @@ export const tasks: TaskItem[] = [
     build: "fix(dashboard)",
     manifest: "—",
     module: "dashboard · ремонт",
-    commit: "fix(dashboard): завершение ремонта, data-модули, статусы [TASK-0007]",
+    commit: "fix(dashboard): завершение ремонта [TASK-0007]",
     title: "Ремонт дашборда: data-модули, статусы, порядок группы",
     status: "done-pass",
     statusLabel: "DONE · 4c307da + завершение",
