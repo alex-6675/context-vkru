@@ -3,7 +3,7 @@
 # ============================================================
 
 # --- Сборка и артефакты ---
-AGENTS.md
+
 dist/
 
 # --- Локальные данные AI-ассистентов ---
@@ -27,4 +27,3 @@ node_modules/
 package-lock.json
 yarn.lock
 
-scripts\run-edge-vk-test.ps1
