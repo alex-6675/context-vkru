@@ -165,9 +165,9 @@ develop
  │   └── styles.css         # Стили собственного слоя (инжектятся в VK.RU)
  │
  ├── scripts                # Вспомогательные PowerShell скрипты
- │   ├── Build.ps1          
- │   ├── Clean.ps1          
- │   └── Test.ps1           
+ │   ├── Build.ps1
+ │   ├── Clean.ps1
+ │   └── Test.ps1
  │
  ├── reports                # Отчеты и логи
  │
@@ -185,3 +185,50 @@ develop
 
 **СТАТУС:** АРХИТЕКТУРНОЕ ПРОЕКТИРОВАНИЕ ЗАВЕРШЕНО.
 **СЛЕДУЮЩИЙ ШАГ:** Ожидание проверки и утверждения архитектуры перед началом реализации.
+
+
+Дополнение №3 к архитектуре
+
+КАРТОЧКА БАЗЫ — КОНТРАКТ v2
+```
+{
+  cardId:      "c-0001",
+  created:     "2026-08-20",
+  displayName: "имя, выбранное пользователем",
+  note:        "примечание",
+
+  status:  "saved" | "dirt" | "partner" | "vip" | "custom",
+  visual:  { faded: true/false },        // dirt => faded
+
+  identities: [                           // СЛИЯНИЕ
+    {
+      portal: "vk" | "ok" | "dzen" | "forum" | "generic",
+      id:     "id123 / club123 / ник",
+      url:    "ссылка на него",
+      name:   "ник как встретился",
+      metAt:  "дата встречи",             // точка начала
+      metUrl: "ссылка на место встречи (пост/комментарий)"
+    },
+    ...                                   // несколько на одну карточку
+  ],
+
+  access: {                               // закладывается СЕЙЧАС
+    ownerOnly:    true/false,             // true = персонал не видит
+    staffContact: "allowed" | "forbidden-no-reason"
+  },
+
+  history: [ {date, action, portal, url} ]
+}
+```
+```
+ПРАВИЛА:
+ПКМ «сохранить» создаёт УДОСТОВЕРЕНИЕ; оно идёт в новую карточку
+  или ПРИКЛЕИВАЕТСЯ к существующей (слияние).
+«dirt»: блеклость на странице + барьер общения; снятие — только
+  из карточки.
+Белый список (partner/vip): ownerOnly=true,
+  staffContact=forbidden-no-reason; персонал видит запрет
+  БЕЗ объяснения причин.
+Значения по умолчанию при сохранении: status=saved,
+  ownerOnly=false, staffContact=allowed.
+```
