@@ -1,16 +1,15 @@
-/* Context VK.RU · core/messaging.js · v03r
+/* Context VK.RU · core/messaging.js · v04r
  * Общие константы сообщений (MV3 message passing).
  *
- * Переворот архитектуры №2 (M03r.md): массового сканирования больше нет —
- * расширение молчит, пока пользователь не скажет «вот этот» (ПКМ).
- * Единственный тип сообщения — CAPTURED (background -> content).
+ * v03r: единственный тип сообщения — CAPTURED (background -> content).
+ * v04r: версия сборки; типы сообщений без изменений.
  *
  * Подключение: в content-скрипты — манифестом, ПЕРЕД content.js;
  * в Service Worker — importScripts("./core/messaging.js").
  * Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2).
  */
 
-const CTX_BUILD = "v03r";
+const CTX_BUILD = "v04r";
 
 const CTX_MSG = Object.freeze({
   CAPTURED: "ctx:captured",
