@@ -1,20 +1,42 @@
 {
   "manifest_version": 3,
-  "name": "__MSG_extName__",
-  "description": "__MSG_extDescription__",
-  "default_locale": "ru",
-  "version": "0.0.9",
-  "permissions": ["contextMenus", "storage"],
+  "name": "Context for VK.RU",
+  "version": "0.0.10",
+  "description": "Создание и редактирование карточек персон",
+  "permissions": [
+    "contextMenus",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.vk.ru/*"
+  ],
+  "action": {
+    "default_popup": "dialog.html"
+  },
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://vk.ru/*"],
-      "js": ["src/core/messaging.js", "src/core/storage.js", "src/core/normalize.js", "src/content.js"],
-      "css": ["src/styles.css"],
-      "run_at": "document_idle"
+      "matches": ["*://*.vk.ru/*"],
+      "js": [
+        "core/messaging.js",
+        "core/normalize.js",
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_end"
     }
   ],
-  "host_permissions": ["https://vk.ru/*"]
+  "side_panel": {
+    "default_path": "dialog.html"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
 }
