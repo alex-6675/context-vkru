@@ -28,11 +28,3 @@
   "powershell.scriptAnalysis.enable": true
 }
 
-И добавьте .vscode/extensions.json — список «что должно стоять у любого, кто откроет проект» (норма индустрии):
-
-{
-  "recommendations": [
-    "ms-vscode.powershell",
-    "esbenp.prettier-vscode"
-  ]
-}
