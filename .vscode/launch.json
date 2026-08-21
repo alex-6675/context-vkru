@@ -2,11 +2,12 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Edge — расширение (dev)",
+      "name": "Attach Edge CDP 9222",
       "type": "msedge",
-      "request": "launch",
-      "url": "https://vk.ru/",
-      "webRoot": "${workspaceFolder}/EdgeExtension"
+      "request": "attach",
+      "port": 9222,
+      "urlFilter": "https://vk.ru/*",
+      "webRoot": "${workspaceFolder}/dist"
     }
   ]
 }

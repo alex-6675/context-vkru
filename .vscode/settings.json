@@ -1,6 +1,38 @@
 {
+  // базовая гигиена (сохраняем из старого)
   "files.eol": "\n",
   "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
   "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // артефакты есть на диске, но не мозолят глаза и не тормозят поиск
+  "files.exclude": {
+    "/node_modules": true,
+    "/dist": true
+  },
+  "search.exclude": {
+    "/node_modules": true,
+    "/dist": true
+  },
+  "files.watcherExclude": {
+    "/node_modules/": true,
+    "/dist/": true
+  },
+
+  // код не переформатируется сам собой (урок целостности передачи)
+  "editor.formatOnSave": false,
+  "prettier.requireConfig": true,
+
+  // PowerShell
   "powershell.scriptAnalysis.enable": true
+}
+
+И добавьте .vscode/extensions.json — список «что должно стоять у любого, кто откроет проект» (норма индустрии):
+
+{
+  "recommendations": [
+    "ms-vscode.powershell",
+    "esbenp.prettier-vscode"
+  ]
 }
