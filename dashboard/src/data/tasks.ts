@@ -77,9 +77,9 @@ export const tasks: TaskItem[] = [
     manifest: "—",
     module: "AGENTS.md · Дополнение А",
     commit: "docs: AGENTS.md — Дополнение А (целостность и гейты) [TASK-0003]",
-    title: "AGENTS.md — Дополнение А (целостность и гейты)",
-    status: "queue",
-    statusLabel: "очередь",
+    title: "AGENTS.md — Дополнения А (А1–А6) и Б (Б1–Б4)",
+    status: "done-pass",
+    statusLabel: "DONE · a4b6ec9",
     dep: "нет (параллельно с TASK-0002)",
     goal: "Закрепить в AGENTS.md правила целостности передачи кода и гейтов проверки, выработанные в итерациях v_03 / v_03f / v03f2 — закрыть дефект «markdown съел подчёркивания» процедурно.",
     files: [

@@ -2,6 +2,15 @@ import { useState } from "react";
 import { tasks, taskProcessRules } from "../data/tasks";
 import Reveal from "./Reveal";
 
+/* Порядок исполнения группы (docs/tasks/TASK-000X.md) */
+const execOrder = [
+  { id: "TASK-0001", area: "feat(ext)", what: "v03r — фундамент: ПКМ, изъятие linkUrl", state: "DONE · PASS", done: true },
+  { id: "TASK-0003", area: "docs", what: "AGENTS.md — Дополнения А (А1–А6) и Б (Б1–Б4)", state: "DONE", done: true },
+  { id: "TASK-0002", area: "chore(infra)", what: "RunEdgeCdp.ps1 · .gitignore · tasks/launch · opencode.jsonc", state: "очередь", done: false },
+  { id: "TASK-0005", area: "chore(env)", what: ".vscode — отдельным коммитом, не смешивая с ext/дашбордом", state: "очередь", done: false },
+  { id: "TASK-0004", area: "style(dashboard)", what: "строгий деловой дизайн, референс Gmail", state: "очередь", done: false },
+];
+
 export default function TaskRegistry() {
   const [open, setOpen] = useState<string>("TASK-0001");
 
@@ -26,7 +35,7 @@ export default function TaskRegistry() {
                           : passed
                             ? "border-pass bg-pass/40"
                             : "border-line2 bg-panel"
-                  }`}
+                      }`}
                     />
                   </div>
                   <button
@@ -160,28 +169,47 @@ export default function TaskRegistry() {
         <Reveal delay={160}>
           <div className="cornered border border-line bg-inset/90 p-5">
             <h3 className="font-display text-[15px] font-semibold text-ink">
-              Порядок r-серии
+              Порядок исполнения группы
             </h3>
-            <pre className="mt-3 overflow-x-auto font-mono text-[11.5px] leading-[1.9] text-dim">
-{`TASK-0001  v03r   фундамент (ПКМ)
-    │      RESULT_v03r.md → PASS
-    ▼
-TASK-0002  v_04r  портал + id + авто-тип
-    ▼
-TASK-0003  v_05r  запись в базу (контракт v2)
-    ▼
-TASK-0004  v_06r  маркировка после F5
-    ▼
-TASK-0005  v_07r  меню коррекции карточки
-    ▼
-далее (Дополнение №3): v_08r слияние · v_09r экспорт/импорт`}
-            </pre>
+            <div className="mt-3 space-y-1.5">
+              {execOrder.map((row, i) => (
+                <div
+                  key={row.id}
+                  className={`group flex items-start gap-3 border px-3 py-2.5 transition-colors ${
+                    row.done
+                      ? "border-pass/30 bg-pass/[0.05] hover:border-pass/60"
+                      : "border-line/70 bg-panel/40 hover:border-line2 hover:bg-panel/70"
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center font-mono text-[10px] font-bold ${
+                      row.done ? "text-pass" : "text-faint"
+                    }`}
+                  >
+                    {row.done ? "✓" : i + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-mono text-[11.5px] font-bold leading-snug text-ink">
+                      {row.id} <span className="font-normal text-steel/80">{row.area}</span>
+                    </p>
+                    <p className="mt-0.5 text-[11.5px] leading-snug text-dim">{row.what}</p>
+                    <p
+                      className={`mt-1 font-mono text-[9.5px] font-bold uppercase tracking-wider ${
+                        row.done ? "text-pass" : "text-faint"
+                      }`}
+                    >
+                      {row.state}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
             <p className="mt-3 text-[12px] leading-relaxed text-faint">
-              Строго последовательно: следующий TASK не выдаётся до PASS по
-              предыдущему (§4 регламента). Файлы группы —{" "}
-              <span className="font-mono text-[11px] text-dim">docs/tasks/TASK-000X.md</span>;
-              поправка о TASK —{" "}
-              <span className="font-mono text-[11px] text-dim">docs/ARCHITECTURE_TASKS_ADDENDUM.md</span>.
+              Коммиты — conventional с тегом{" "}
+              <span className="font-mono text-[11px] text-dim">[TASK-XXXX]</span>; файлы группы —{" "}
+              <span className="font-mono text-[11px] text-dim">docs/tasks/TASK-000X.md</span>{" "}
+              (статус NEW → DONE, хэш — при пуше). Внеплановые: TASK-0006 (ремонт дашборда),
+              TASK-0007, TASK-0008 (гигиена docs/tasks).
             </p>
           </div>
         </Reveal>
