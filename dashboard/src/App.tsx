@@ -10,6 +10,7 @@ import V02Sheet from "./components/V02Sheet";
 import V03Sheet from "./components/V03Sheet";
 import V03F2Section from "./components/V03F2Section";
 import V03RSection from "./components/V03RSection";
+import TaskRegistry from "./components/TaskRegistry";
 import {
   counts,
   stages,
@@ -339,10 +340,20 @@ export default function App() {
           <V03RSection verdict={verdict} setVerdict={setVerdict} />
         </section>
 
-        {/* 02 — фикс v03f2 (история, снят с обязанности) */}
+        {/* 02 — реестр заданий Кодеру */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
             num="02"
+            title="Реестр заданий · TASK-0001 — 0005"
+            sub="Группа заданий Кодеру в формате conventional commits с тегами [TASK-XXXX] (первоисточник — docs/tasks/TASK-0001.md): от фундамента M-03r до инфраструктуры, регламента, делового стиля дашборда и workspace-окружения. Клик по заданию раскрывает цель, файлы, тест и PASS-критерий."
+          />
+          <TaskRegistry />
+        </section>
+
+        {/* 03 — фикс v03f2 (история, снят с обязанности) */}
+        <section className="mx-auto max-w-6xl px-5 py-14">
+          <SectionHead
+            num="03"
             title="Фикс v03f2 — порче-невозможная реализация · снят с обязанности"
             sub="История: замер 3C (dates=168 / roots=0), конструкция селекторов через String.fromCharCode(95), data-post-id, coverage-гейт. Решением №2 (M03r.md) массовый сканер и MutationObserver сняты как избыточные; наработки ушли в нормализатор (v_04r) и маркировку после F5 (v_06r)."
           />
@@ -352,7 +363,7 @@ export default function App() {
         {/* 02 — фикс v_03f (история, 3B) */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="03"
+            num="04"
             title="Фикс v_03f — первый ответ на дефект (3B)"
             sub="История дефекта: доказательная база первого анализа, корень причины (markdown съел подчёркивания), verbatim-контракт селекторов и процедурные решения. Замер 3C показал, что verbatim-передача недостаточна, — понадобилась конструкция через fromCharCode(95)."
           />
@@ -538,7 +549,7 @@ export default function App() {
         {/* 03 — шаг 3 / v_03 */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="04"
+            num="05"
             title="Шаг 3 · v_03 — VK.RU Adapter: обнаружение"
             sub="Рабочий лист исходной сборки по заданию docs/3A.md: таблица признаков 3A, конвейер обнаружения, листинги пакета, критерии TEST.md. Итоговый вердикт (по fix2) фиксируется в секции 01."
           />
@@ -548,7 +559,7 @@ export default function App() {
         {/* 04 — шаг 2 / v_02 (закрыт) */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="05"
+            num="06"
             title="Шаг 2 · v_02 — диагностический канал · закрыт"
             sub="Историческая сборка: PING/PONG между content.js и Service Worker. Закрыта вердиктом PASS (RESULT_v_02.md, 19.08.2026); в v03r канал снят — фундамент перестроен (Решение №2)."
           />
@@ -558,7 +569,7 @@ export default function App() {
         {/* 05 — шаг 1 / v_01 (закрыт) */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="06"
+            num="07"
             title="Шаг 1 · v_01 — контрольный каркас · закрыт"
             sub="Историческая сборка: минимальный MV3-манифест, Service Worker и content script. Закрыта вердиктом PASS (RESULT_v_01.md, 18.08.2026); листинги оставлены для протокола."
           />
@@ -568,7 +579,7 @@ export default function App() {
         {/* 06 — дорожная карта */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="07"
+            num="08"
             title="Дорожная карта v_01 — v_15"
             sub="Часть 6 регламента: строго последовательно, один модуль — одна тестовая сборка. v_01 и v_02 зелёные (PASS); серия v_03 решением №2 (M03r.md) переведена в r-серию (v_03r → v_07r) — актуальный порядок в секции 01; клик раскрывает цель и PASS-критерий."
           />
@@ -578,7 +589,7 @@ export default function App() {
         {/* 07 — матрица */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="08"
+            num="09"
             title="Сверка с architecture.md"
             sub={`Постатейная проверка: границы и стек (§B), компоненты (§D), контракт ENTITY (§E), идентификация (§F–I), сценарий ПКМ (§J), отказ от legacy (§K), структура каталогов (§L). Всего ${counts.total} пунктов. Бейдж «файл · v_XX» — артефакт создан в соответствующей сборке, полная функция приходит по плану.`}
           />
@@ -588,7 +599,7 @@ export default function App() {
         {/* 08 — контракт */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="09"
+            num="10"
             title="Контракт ENTITY"
             sub="Часть 3 регламента: структура заморожена, компоненты обмениваются только ею. Полевые правила — что можно считать ключом, а что запрещено трогать; вопрос §F закрыт диагностикой 3A."
           />
@@ -627,7 +638,7 @@ export default function App() {
         {/* 09 — стек */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="10"
+            num="11"
             title="Конфликт стека — решён разведением корней"
             sub="Единственный WARN аудита (§2.2): шаблон собран на том, что регламент запрещает внутри расширения. Пакет EdgeExtension/ пишется на Vanilla JS с нулём зависимостей — шаблон остаётся снаружи."
           />
@@ -674,7 +685,7 @@ export default function App() {
         {/* 10 — чек-лист */}
         <section className="mx-auto max-w-6xl px-5 py-14">
           <SectionHead
-            num="11"
+            num="12"
             title="Чек-лист запуска"
             sub="Семь шагов старта проекта. Прогресс сохраняется локально; справа — шаблон задания M-01 по форме §7 как эталон формата для всех следующих модулей."
           />
