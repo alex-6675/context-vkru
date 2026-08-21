@@ -5,10 +5,12 @@ import Reveal from "./Reveal";
 /* Порядок исполнения группы (docs/tasks/TASK-000X.md) */
 const execOrder = [
   { id: "TASK-0001", area: "feat(ext)", what: "v03r — фундамент: ПКМ, изъятие linkUrl", state: "DONE · PASS", done: true },
-  { id: "TASK-0003", area: "docs", what: "AGENTS.md — Дополнения А (А1–А6) и Б (Б1–Б4)", state: "DONE", done: true },
+  { id: "TASK-0003", area: "docs", what: "AGENTS.md — Дополнения А (А1–А6) и Б (Б1–Б4)", state: "DONE · a4b6ec9", done: true },
+  { id: "TASK-0007", area: "fix(dashboard)", what: "ремонт дашборда: data-модули, статусы, порядок группы", state: "DONE · 4c307da + завершение", done: true },
+  { id: "TASK-0006", area: "feat(ext)", what: "v04r — нормализатор + опознание портала (r-серия)", state: "исполнено · ждёт RESULT", done: false },
   { id: "TASK-0002", area: "chore(infra)", what: "RunEdgeCdp.ps1 · .gitignore · tasks/launch · opencode.jsonc", state: "очередь", done: false },
   { id: "TASK-0005", area: "chore(env)", what: ".vscode — отдельным коммитом, не смешивая с ext/дашбордом", state: "очередь", done: false },
-  { id: "TASK-0004", area: "style(dashboard)", what: "строгий деловой дизайн, референс Gmail", state: "очередь", done: false },
+  { id: "TASK-0004", area: "style(dashboard)", what: "строгий деловой дизайн, референс Gmail (только после 0007)", state: "очередь", done: false },
 ];
 
 export default function TaskRegistry() {

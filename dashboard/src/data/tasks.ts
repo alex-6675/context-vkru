@@ -1,5 +1,6 @@
-/* Группа заданий Кодеру TASK-0001 … TASK-0005.
- * Первоисточник: docs/tasks/TASK-0001.md. Формат — conventional commits с тегом [TASK-XXXX]. */
+/* Группа заданий Кодеру TASK-0001 … TASK-0007 (TASK-0008 — гигиена docs/tasks).
+ * Первоисточник: docs/tasks/TASK-0001.md. Формат — conventional commits с тегом [TASK-XXXX].
+ * TASK-0006 = v04r (r-серия); номера для v05r/v06r/v07r будут выданы позже. */
 
 export type TaskStatus = "done-wait" | "done-pass" | "queue";
 
@@ -139,6 +140,58 @@ export const tasks: TaskItem[] = [
     ],
     pass: "Окружение воспроизводимо; коммит chore(env) изолирован от кода ext и dashboard.",
     basis: "цитата разработчика · отдельный коммит",
+  },
+  {
+    id: "TASK-0006",
+    build: "feat(ext) · v04r",
+    manifest: "0.0.7",
+    module: "M-04r · EdgeExtension",
+    commit: "feat(ext): v04r — нормализатор и опознание портала [TASK-0006]",
+    title: "v04r: нормализатор + опознание портала (тип из меню, metPost из page)",
+    status: "done-wait",
+    statusLabel: "исполнено · ждёт RESULT_v04r.md",
+    dep: "TASK-0001 = PASS",
+    goal: "Из изъятой браузером ссылки — удостоверение {portal, id, url} + тип из пункта меню + metPost из pageUrl. Порталы vk / ok / dzen / generic по одному контракту; vk-схемы idN/clubN/wall — regex через String.fromCharCode(95).",
+    files: [
+      "manifest.json — version 0.0.7 (без новых permissions)",
+      "src/core/normalize.js — новый: portalOf / normalize / metPostOf, U = fromCharCode(95)",
+      "src/core/messaging.js — CTX_BUILD = \"v04r\"",
+      "src/background.js — резолв изъятия через CTX_NORMALIZE (тип — menuItemId, metPost — pageUrl)",
+      "src/content.js — расширенный лог captured (portal · id · type · metPost)",
+    ],
+    test: [
+      "«Сохранить персонажа» на /idN → portal: vk · id: idN · type: PERSON · metPost из page",
+      "«Сохранить сообщество» на /clubN → id: clubN · type: COMMUNITY",
+      "Ссылка wall-… → id: wall-…; внешний домен → portal: generic",
+      "Регрессия v03r: ПКМ по пустому месту — пунктов нет",
+    ],
+    pass: "Удостоверение корректно для vk и не ломается на generic; тип — из пункта меню; metPost — из page; карточка расширения без ошибок.",
+    basis: "M03r.md · план v_04r · текст проектировщика (ШАГ 2)",
+  },
+  {
+    id: "TASK-0007",
+    build: "fix(dashboard)",
+    manifest: "—",
+    module: "dashboard · ремонт",
+    commit: "fix(dashboard): завершение ремонта, data-модули, статусы [TASK-0007]",
+    title: "Ремонт дашборда: data-модули, статусы, порядок группы",
+    status: "done-pass",
+    statusLabel: "DONE · 4c307da + завершение",
+    dep: "нет",
+    goal: "Завершить ремонт после порчи при передаче: недостающие data-модули (v03f, v03f2, v03r) и компоненты (V03RSection, V03F2Section); статус TASK-0003 = done-pass (a4b6ec9); блок порядка — в соответствие со списком задач (TASK-0006 = v04r; номера v05r/v06r/v07r будут выданы позже).",
+    files: [
+      "dashboard/src/data/v03f.ts · v03f2.ts · v03r.ts — восстановлены (одна копия)",
+      "dashboard/src/components/V03RSection.tsx · V03F2Section.tsx — восстановлены",
+      "dashboard/src/data/tasks.ts — статусы + записи TASK-0006/0007",
+      "dashboard/src/components/TaskRegistry.tsx — блок порядка исполнения",
+    ],
+    test: [
+      "Б3: Select-String '修改后' по dashboard/src и EdgeExtension → 0",
+      "панель Problems: 0 ошибок",
+      "npm run build — проходит",
+    ],
+    pass: "Сборка зелёная; все импорты резолвятся; функциональность и данные журнала сохранены.",
+    basis: "сверка проектировщика по коммиту 4c307da · ШАГ 1",
   },
 ];
 
