@@ -1,7 +1,7 @@
 /* Группа заданий Кодеру TASK-0001 … TASK-0005.
  * Первоисточник: docs/tasks/TASK-0001.md. Формат — conventional commits с тегом [TASK-XXXX]. */
 
-export type TaskStatus = "done-wait" | "queue";
+export type TaskStatus = "done-wait" | "done-pass" | "queue";
 
 export interface TaskItem {
   id: string;
@@ -28,8 +28,8 @@ export const tasks: TaskItem[] = [
     module: "M-03r · EdgeExtension",
     commit: "feat(ext): M-03r — ПКМ «Сохранить персонажа/сообщество», изъятие linkUrl [TASK-0001]",
     title: "ПКМ: изъятие ссылки в момент фиксации (фундамент)",
-    status: "done-wait",
-    statusLabel: "исполнено · ждёт RESULT_v03r.md",
+    status: "done-pass",
+    statusLabel: "DONE · PASS · RESULT_v03r.md",
     dep: "—",
     goal: "Доказать: браузер в момент ПКМ сам отдаёт ссылку сущности (info.linkUrl / pageUrl). Никакого массового сканирования — только действие пользователя.",
     files: [

@@ -421,7 +421,8 @@ export const termLines: TermLine[] = [
   { type: "pass", text: "v03r (0.0.6): contextMenus · ctx:captured · сканеры и MutationObserver сняты" },
   { type: "pass", text: "группа заданий заполнена: TASK-0001…0005 · conventional commits [TASK-XXXX]" },
   { type: "arrow", text: "TASK-0001 feat(ext) M-03r · 0002 infra · 0003 AGENTS Доп.А · 0004 Gmail-стиль · 0005 .vscode" },
-  { type: "cmd", text: "ожидание RESULT_v03r.md_" },
+  { type: "pass", text: "RESULT_v03r.md: PASS от Пользователя (2026-08-20) — TASK-0001 DONE" },
+  { type: "cmd", text: "TASK-0002 (chore: infra) — выдача за проектировщиком_" },
 ];
 
 /* ---------- конфликт стека ---------- */

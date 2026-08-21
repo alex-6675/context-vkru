@@ -14,6 +14,7 @@ export default function TaskRegistry() {
           {tasks.map((t, i) => {
             const isOpen = open === t.id;
             const active = t.status === "done-wait";
+            const passed = t.status === "done-pass";
             return (
               <Reveal key={t.id} delay={Math.min(i * 60, 240)}>
                 <div className="relative flex gap-4">
@@ -22,8 +23,10 @@ export default function TaskRegistry() {
                       className={`h-[15px] w-[15px] rounded-full border-2 ${
                         active
                           ? "pulse-now border-steel bg-steel/30"
-                          : "border-line2 bg-panel"
-                      }`}
+                          : passed
+                            ? "border-pass bg-pass/40"
+                            : "border-line2 bg-panel"
+                  }`}
                     />
                   </div>
                   <button
@@ -37,7 +40,7 @@ export default function TaskRegistry() {
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                       <span
                         className={`font-mono text-[12px] font-bold tracking-wide ${
-                          active ? "text-steel" : "text-faint"
+                          active ? "text-steel" : passed ? "text-pass" : "text-faint"
                         }`}
                       >
                         {t.id}
@@ -53,7 +56,9 @@ export default function TaskRegistry() {
                         className={`ml-auto shrink-0 rounded-sm border px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wider ${
                           active
                             ? "border-warn/50 bg-warn/10 text-warn"
-                            : "border-line2 bg-inset text-faint"
+                            : passed
+                              ? "border-pass/50 bg-pass/10 text-pass"
+                              : "border-line2 bg-inset text-faint"
                         }`}
                       >
                         {t.statusLabel}
