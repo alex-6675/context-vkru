@@ -1,13 +1,17 @@
-/* Context VK.RU · v07r · content.js — ПОЛНАЯ ЗАМЕНА (TASK-0011).
+/* Context VK.RU · v07f · content.js — ПОЛНАЯ ЗАМЕНА (TASK-0011, Решение №5).
  * Расширение молчит, пока пользователь не скажет «вот этот».
  *
- * v06r (сохранено): индекс {byId, byComment(id#reply), byCommentLegacy};
- *   скан a[href] с абсолютизацией; ▲ у персон/сообществ, ◆ у закладок
- *   комментариев; WeakSet от дублей; MutationObserver debounced 600 мс.
- * v07r (новое): обёртка span.ctx-hl (заливка ника цветом карточки ~80%)
- *   + маркер; status "dirt" → ctx-faded (opacity .45 + grayscale);
- *   клик по маркеру → OPEN_CARD (background откроет dialog.html);
- *   chrome.storage.onChanged → пересобрать индекс и перерисовать без F5.
+ * v07f (по RESULT_v07r.md, дефекты D1–D4):
+ *  - Метки: ТОЛЬКО ▲ по карточкам person/community (byId). ◆ НЕ существует.
+ *    unwrap-перерендер перед каждым scan; якоря без текста (аватары) не метить;
+ *    один ▲ на карточку на контейнер (post / comment root / [role="dialog"] / body).
+ *  - ПКМ по дате комментария (href содержит reply=): найти корень комментария,
+ *    внутри a[data-testid="comment-owner"] — автор; послать SW SAVE_AUTHOR
+ *    {authorHref, metUrl, page}. Селекторы с "_" — через String.fromCharCode(95).
+ *  - NAME_HINT: после CAPTURED найти первый якорь с тем же id и непустым текстом,
+ *    послать SW {id, name}.
+ *  - Живой рендер: chrome.storage.onChanged → debounce 120 мс → unwrap + scan
+ *    (цвет/блеклость без F5).
  *
  * Свои классы ctx-*; атрибуты узлов VK не трогаются.
  * Vanilla JS, ноль зависимостей (§2.2).
@@ -18,8 +22,14 @@
 
   console.log("[CTX " + CTX_BUILD + "] content started — path: " + location.pathname);
 
-  let INDEX = { byId: new Map(), byComment: new Map(), byCommentLegacy: new Map() };
-  let wrappers = [];   /* наши обёртки ctx-hl — для снятия при перерисовке */
+  const U = String.fromCharCode(95);
+  /* Корни комментариев (testid с подчёркиваниями собраны через U, по А1/§25). */
+  const COMMENT_ROOT_SEL =
+    '[data-testid="wall' + U + 'comments' + U + 'comment' + U + 'root"],' +
+    '[data-testid="wall' + U + 'comments' + U + 'comment' + U + 'in' + U + 'thread"]';
+
+  let INDEX = { byId: new Map() };
+  let wrappers = [];        /* наши обёртки ctx-hl — для снятия при перерисовке */
   let markTimer = 0;
   const OBS_OPTS = { childList: true, subtree: true };
   const observer = new MutationObserver(() => {
@@ -27,23 +37,16 @@
     markTimer = setTimeout(scan, 600);
   });
 
-  /* ---------- индекс по базе ---------- */
+  /* ---------- индекс по базе (только byId — метим лишь ▲) ---------- */
   function buildIndex(db) {
-    const byId = new Map();            /* id -> карточка (▲) */
-    const byComment = new Map();       /* id#reply -> карточка (◆, точная) */
-    const byCommentLegacy = new Map(); /* id без replyId -> карточка (◆, legacy) */
+    const byId = new Map(); /* id -> карточка */
     (db.cards || []).forEach((card) => {
       (card.identities || []).forEach((it) => {
         if (!it || !it.id) return;
-        if (it.replyId) {
-          byComment.set(it.id + "#" + it.replyId, card);
-        } else {
-          byId.set(it.id, card);
-          byCommentLegacy.set(it.id, card);
-        }
+        byId.set(it.id, card);
       });
     });
-    INDEX = { byId: byId, byComment: byComment, byCommentLegacy: byCommentLegacy };
+    INDEX = { byId: byId };
   }
 
   /* ---------- цвет карточки → заливка ~80% ---------- */
@@ -66,8 +69,8 @@
     wrappers = [];
   }
 
-  /* ---------- обернуть якорь: заливка + маркер ---------- */
-  function wrap(anchor, card, isComment) {
+  /* ---------- обернуть якорь: заливка + маркер ▲ ---------- */
+  function wrap(anchor, card) {
     const hl = document.createElement("span");
     hl.className = "ctx-hl" + (card.status === "dirt" ? " ctx-faded" : "");
     hl.style.background = fillOf(card);
@@ -75,8 +78,8 @@
     hl.appendChild(anchor);
 
     const mark = document.createElement("span");
-    mark.className = isComment ? "ctx-mark ctx-mark-c" : "ctx-mark";
-    mark.textContent = isComment ? "◆" : "▲";
+    mark.className = "ctx-mark";
+    mark.textContent = "▲";
     mark.title = "CTX: " + card.cardId + (card.displayName ? " · " + card.displayName : "");
     mark.addEventListener("click", (e) => {
       e.preventDefault();
@@ -90,16 +93,28 @@
     wrappers.push(hl);
   }
 
+  /* ---------- контейнер для правила «один ▲ на карточку» ---------- */
+  function containerOf(a) {
+    return (
+      a.closest('[data-testid="post"]') ||
+      a.closest(COMMENT_ROOT_SEL) ||
+      a.closest('[role="dialog"]') ||
+      document.body
+    );
+  }
+
   /* ---------- скан якорей ---------- */
   function scan() {
     observer.disconnect(); /* свои мутации не должны будить наблюдателя */
     unwrapAll();
 
-    const seen = new WeakSet(); /* дубли внутри одного прохода */
+    const seenAnchors = new WeakSet();          /* дубли якорей в одном проходе */
+    const perCard = new Map();                  /* cardId -> Set(контейнеров) */
     let marked = 0;
 
     document.querySelectorAll("a[href]").forEach((a) => {
-      if (seen.has(a) || a.closest(".ctx-hl")) return;
+      if (seenAnchors.has(a) || a.closest(".ctx-hl")) return;
+      if (!a.textContent.trim()) return;        /* якоря без текста (аватары) не метим */
       const href = a.getAttribute("href");
       if (!href) return;
 
@@ -109,21 +124,18 @@
       const norm = CTX_NORMALIZE.normalize(abs, "save-person");
       if (!norm.id) return;
 
-      const reply = CTX_NORMALIZE.replyOf(abs);
-      let card = null;
-      let isComment = false;
-      if (reply) {
-        /* закладка комментария: точное совпадение, иначе legacy-фолбэк */
-        card = INDEX.byComment.get(norm.id + "#" + reply) ||
-               INDEX.byCommentLegacy.get(norm.id) || null;
-        if (card) isComment = true;
-      } else {
-        card = INDEX.byId.get(norm.id) || null;
-      }
+      const card = INDEX.byId.get(norm.id);
       if (!card) return;
 
-      seen.add(a);
-      wrap(a, card, isComment);
+      /* один ▲ на карточку на контейнер */
+      const container = containerOf(a);
+      let containers = perCard.get(card.cardId);
+      if (!containers) { containers = new Set(); perCard.set(card.cardId, containers); }
+      if (containers.has(container)) return;
+      containers.add(container);
+
+      seenAnchors.add(a);
+      wrap(a, card);
       marked++;
     });
 
@@ -144,7 +156,26 @@
 
   observer.observe(document.body, OBS_OPTS);
 
-  /* ---------- живая перерисовка: база изменилась (без F5) ---------- */
+  /* ---------- ПКМ по дате комментария → изъятие автора (SAVE_AUTHOR) ---------- */
+  document.addEventListener("contextmenu", (e) => {
+    const a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+    if (!a) return;
+    const href = a.getAttribute("href") || "";
+    let abs;
+    try { abs = new URL(href, location.origin).href; } catch (err) { return; }
+    if (!CTX_NORMALIZE.replyOf(abs)) return; /* это не дата комментария */
+
+    const root = a.closest(COMMENT_ROOT_SEL);
+    if (!root) return;
+    const owner = root.querySelector('a[data-testid="comment-owner"]');
+    const authorHref = owner ? owner.href : "";
+    chrome.runtime.sendMessage({
+      type: CTX_MSG.SAVE_AUTHOR,
+      payload: { authorHref: authorHref, metUrl: abs, page: location.href },
+    }).catch(() => {});
+  }, true);
+
+  /* ---------- живой рендер: база изменилась (без F5) ---------- */
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local" || !changes[CTX_STORAGE.KEY]) return;
     clearTimeout(markTimer);
@@ -155,15 +186,33 @@
     }, 120);
   });
 
-  /* ---------- приём CAPTURED (лог изъятия) ---------- */
+  /* ---------- приём CAPTURED (лог изъятия + NAME_HINT) ---------- */
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg && msg.type === CTX_MSG.CAPTURED) {
-      const p = msg.payload || {};
-      console.log("[CTX " + CTX_BUILD + "] captured | menu: " + p.menu +
-        " | portal: " + p.portal + " | id: " + p.id + " | type: " + p.type +
-        " | metPost: " + p.metPost + (p.kind ? " | kind: " + p.kind : "") +
-        (p.replyId ? " | reply: " + p.replyId : "") +
-        " | link: " + p.link + " | page: " + p.page + " | db: " + (p.db || ""));
+    if (!msg || msg.type !== CTX_MSG.CAPTURED) return;
+    const p = msg.payload || {};
+    console.log("[CTX " + CTX_BUILD + "] captured | menu: " + p.menu +
+      " | portal: " + p.portal + " | id: " + p.id + " | type: " + p.type +
+      " | metPost: " + p.metPost +
+      " | link: " + p.link + " | page: " + p.page + " | db: " + (p.db || ""));
+
+    /* NAME_HINT: первый якорь с тем же id и непустым текстом */
+    if (p.id) {
+      const anchors = document.querySelectorAll("a[href]");
+      for (const a of anchors) {
+        if (!a.textContent.trim()) continue;
+        const href = a.getAttribute("href");
+        if (!href) continue;
+        let abs;
+        try { abs = new URL(href, location.origin).href; } catch (e) { continue; }
+        const norm = CTX_NORMALIZE.normalize(abs, "save-person");
+        if (norm.id === p.id) {
+          chrome.runtime.sendMessage({
+            type: CTX_MSG.NAME_HINT,
+            payload: { id: p.id, name: a.textContent.trim() },
+          }).catch(() => {});
+          break;
+        }
+      }
     }
   });
 })();

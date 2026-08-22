@@ -1,8 +1,10 @@
-/* Context VK.RU · dialog.js · v07r
+/* Context VK.RU · dialog.js · v07f
  * Страница карточки коррекции (открывается из SW через chrome.windows.create,
  * url: dialog.html#cardId). Поля: displayName, note, status, цвет (палитра 5),
- * identities — только чтение. «Сохранить» → saveDb → закрыть окно.
- * Поле access не трогается (вне рамок задания v07r).
+ * identities — только чтение.
+ * v07f: кнопка «Удалить карточку» (подтверждение внутри окна) → удалить из db,
+ * saveDb, закрыть окно.
+ * «Сохранить» → saveDb → закрыть окно. Поле access не трогается.
  * Vanilla JS, ноль зависимостей (§2.2).
  */
 (function () {
@@ -25,6 +27,7 @@
       li.textContent = "Карточка не найдена в базе.";
       ids.appendChild(li);
       document.getElementById("btn-save").disabled = true;
+      document.getElementById("btn-delete").disabled = true;
       return;
     }
     fill(card);
@@ -85,6 +88,14 @@
       card.visual.faded = card.status === "dirt"; /* «грязь» → блеклость */
       CTX_STORAGE.saveDb(db).then(function () { window.close(); });
     });
+
+    document.getElementById("btn-delete").addEventListener("click", function () {
+      if (!window.confirm("Удалить карточку " + cardId + "? Это действие нельзя отменить.")) return;
+      var idx = db.cards.findIndex(function (c) { return c.cardId === cardId; });
+      if (idx !== -1) db.cards.splice(idx, 1);
+      CTX_STORAGE.saveDb(db).then(function () { window.close(); });
+    });
+
     document.getElementById("btn-close").addEventListener("click", function () {
       window.close();
     });

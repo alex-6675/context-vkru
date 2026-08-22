@@ -1,11 +1,16 @@
-/* Context VK.RU · v07r · background.js
+/* Context VK.RU · v07f · background.js
  * v03r: ПКМ-изъятие — браузер сам отдаёт linkUrl/pageUrl (Решение №2).
  * v04r: нормализатор — портал, id, тип (из меню), metPost (из page).
  * v05r: запись в базу (chrome.storage.local) по контракту карточки v2.
- * v06r: фикс D1 — дедуп комментариев по portal+id+replyId; разные
- *       комментарии одного поста = разные карточки (Решение №3).
- * v07r: приём OPEN_CARD от контент-скрипта → chrome.windows.create
- *       (окно карточки коррекции, dialog.html#cardId).
+ * v06r: дедуп по portal+id+replyId.
+ * v07f (по RESULT_v07r.md, Решение №5):
+ *   - ПКМ по дате комментария: карточка НЕ создаётся (нет мусорных wall-карточек);
+ *     автор извлекается контентом и приходит сообщением SAVE_AUTHOR.
+ *   - SAVE_AUTHOR: нормализация автора; есть карточка → history += met,
+ *     «уже в базе (card cN) + точка встречи»; нет → новая карточка автора,
+ *     «автор сохранён (card cN)»; автор не найден → «автор не найден — не сохранено».
+ *   - Одно окно на карточку: карта cardId→windowId, focus вместо create.
+ *   - NAME_HINT: имя из первого якоря → identity.name и displayName (если пуст).
  * Vanilla JS, ноль зависимостей (§2.2).
  */
 importScripts("./core/messaging.js");
@@ -29,50 +34,48 @@ function nextCardId(cards) {
   return "c" + (n + 1);
 }
 
+/* Одно окно на карточку: cardId -> windowId */
+const openWindows = new Map();
+chrome.windows.onRemoved.addListener((windowId) => {
+  for (const [cid, wid] of openWindows) {
+    if (wid === windowId) openWindows.delete(cid);
+  }
+});
+
+/* ---------- ПКМ «Сохранить персонажа/сообщество» ---------- */
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const link = info.linkUrl || "";
   const page = info.pageUrl || "";
+  const reply = CTX_NORMALIZE.replyOf(link);
+
+  /* Дата комментария: карточку не создаём — автор извлекается при ПКМ (SAVE_AUTHOR). */
+  if (reply) {
+    console.log("[CTX " + CTX_BUILD + "] дата комментария — карточка не создаётся (автор извлекается при ПКМ)");
+    return;
+  }
+
   const norm = CTX_NORMALIZE.normalize(link, info.menuItemId);
   const metPost = CTX_NORMALIZE.metPostOf(page);
-  const reply = CTX_NORMALIZE.replyOf(link);
-  const isComment = reply !== "";
-  const kind = isComment ? "COMMENT" : undefined;
   const date = new Date().toISOString().slice(0, 10);
 
   const db = await CTX_STORAGE.loadDb();
   let logLine;
 
-  /* Дедуп (фикс D1): COMMENT — совпадение portal+id+replyId;
-   * остальные — portal+id при отсутствии replyId у identity. */
+  /* Дедуп: person/community — portal+id при отсутствии replyId у identity. */
   const existing = db.cards.find(function (c) {
     return (c.identities || []).some(function (it) {
-      if (it.portal !== norm.portal || it.id !== norm.id) return false;
-      if (isComment) return it.replyId === reply;
-      return !it.replyId;
+      return it.portal === norm.portal && it.id === norm.id && !it.replyId;
     });
   });
 
   if (existing) {
-    /* Не создавать: обновить lastSeen + history. */
     existing.lastSeen = date;
-    const h = { date: date, action: "captured", portal: norm.portal, url: link };
-    if (kind) h.kind = kind;
-    existing.history = (existing.history || []).concat([h]);
+    existing.history = (existing.history || []).concat([
+      { date: date, action: "captured", portal: norm.portal, url: link },
+    ]);
     logLine = "уже в базе (card " + existing.cardId + ")";
   } else {
-    /* Новая карточка по контракту v2 с дефолтами. */
     const cardId = nextCardId(db.cards);
-    const history = [{ date: date, action: "captured", portal: norm.portal, url: link }];
-    if (kind) history[0].kind = kind;
-    const identity = {
-      portal: norm.portal,
-      id: norm.id,
-      url: link,
-      name: "",
-      metAt: date,
-      metUrl: metPost,
-    };
-    if (isComment) identity.replyId = reply;
     db.cards.push({
       cardId: cardId,
       created: date,
@@ -80,27 +83,21 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       note: "",
       status: "saved",
       visual: { faded: false },
-      identities: [identity],
+      identities: [{
+        portal: norm.portal, id: norm.id, url: link,
+        name: "", metAt: date, metUrl: metPost,
+      }],
       access: { ownerOnly: false, staffContact: "allowed" },
-      history: history,
+      history: [{ date: date, action: "captured", portal: norm.portal, url: link }],
     });
     logLine = "saved card " + cardId + " (total " + db.cards.length + ")";
   }
-  if (kind) logLine += " · kind " + kind;
   await CTX_STORAGE.saveDb(db);
 
   const captured = {
-    menu: info.menuItemId,
-    link: link,
-    page: page,
-    portal: norm.portal,
-    id: norm.id,
-    type: norm.type,
-    metPost: metPost,
-    replyId: reply,
-    kind: kind || "",
-    db: logLine,
-    ts: Date.now(),
+    menu: info.menuItemId, link: link, page: page,
+    portal: norm.portal, id: norm.id, type: norm.type, metPost: metPost,
+    db: logLine, ts: Date.now(),
   };
   console.log("[CTX " + CTX_BUILD + "] captured:", captured);
   console.log("[CTX " + CTX_BUILD + "] " + logLine);
@@ -109,12 +106,92 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 });
 
-/* v07r: клик по метке на странице → окно карточки коррекции. */
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg && msg.type === CTX_MSG.OPEN_CARD) {
-    const cardId = (msg.payload && msg.payload.cardId) || "";
-    chrome.windows.create({ url: "dialog.html#" + cardId,
-      type: "popup", width: 480, height: 640 });
+/* ---------- SAVE_AUTHOR: автор из комментария ---------- */
+async function handleSaveAuthor(payload) {
+  const authorHref = payload.authorHref || "";
+  const metUrl = payload.metUrl || "";
+  const date = new Date().toISOString().slice(0, 10);
+
+  if (!authorHref) {
+    console.log("[CTX " + CTX_BUILD + "] автор не найден — не сохранено");
+    return;
   }
+  const norm = CTX_NORMALIZE.normalize(authorHref, "save-person");
+  if (!norm.id) {
+    console.log("[CTX " + CTX_BUILD + "] автор не найден — не сохранено");
+    return;
+  }
+
+  const db = await CTX_STORAGE.loadDb();
+  const existing = db.cards.find(function (c) {
+    return (c.identities || []).some(function (it) {
+      return it.portal === norm.portal && it.id === norm.id && !it.replyId;
+    });
+  });
+
+  if (existing) {
+    existing.lastSeen = date;
+    existing.history = (existing.history || []).concat([
+      { date: date, action: "met", url: metUrl },
+    ]);
+    console.log("[CTX " + CTX_BUILD + "] уже в базе (card " + existing.cardId + ") + точка встречи");
+  } else {
+    const cardId = nextCardId(db.cards);
+    db.cards.push({
+      cardId: cardId,
+      created: date,
+      displayName: "",
+      note: "",
+      status: "saved",
+      visual: { faded: false },
+      identities: [{
+        portal: norm.portal, id: norm.id, url: authorHref,
+        name: "", metAt: date, metUrl: metUrl,
+      }],
+      access: { ownerOnly: false, staffContact: "allowed" },
+      history: [{ date: date, action: "met", url: metUrl }],
+    });
+    console.log("[CTX " + CTX_BUILD + "] автор сохранён (card " + cardId + ")");
+  }
+  await CTX_STORAGE.saveDb(db);
+}
+
+/* ---------- NAME_HINT: имя из первого якоря ---------- */
+async function handleNameHint(payload) {
+  const id = payload.id || "";
+  const name = payload.name || "";
+  if (!id || !name) return;
+
+  const db = await CTX_STORAGE.loadDb();
+  const card = db.cards.find(function (c) {
+    return (c.identities || []).some(function (it) { return it.id === id; });
+  });
+  if (!card) return;
+
+  const it = card.identities.find(function (x) { return x.id === id; });
+  if (it && !it.name) it.name = name;
+  if (!card.displayName) card.displayName = name;
+  await CTX_STORAGE.saveDb(db);
+  console.log("[CTX " + CTX_BUILD + "] имя сохранено: " + card.cardId + " → " + name);
+}
+
+/* ---------- приём сообщений ---------- */
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!msg || !msg.type) return false;
+
+  if (msg.type === CTX_MSG.OPEN_CARD) {
+    const cardId = (msg.payload && msg.payload.cardId) || "";
+    if (openWindows.has(cardId)) {
+      chrome.windows.update(openWindows.get(cardId), { focused: true }).catch(() => {});
+    } else {
+      chrome.windows.create({
+        url: chrome.runtime.getURL("dialog.html") + "#" + encodeURIComponent(cardId),
+        type: "popup", width: 480, height: 640, focused: true,
+      }).then((w) => { openWindows.set(cardId, w.id); }).catch(() => {});
+    }
+    return false;
+  }
+  if (msg.type === CTX_MSG.SAVE_AUTHOR) { handleSaveAuthor(msg.payload || {}); return false; }
+  if (msg.type === CTX_MSG.NAME_HINT) { handleNameHint(msg.payload || {}); return false; }
   return false;
 });
