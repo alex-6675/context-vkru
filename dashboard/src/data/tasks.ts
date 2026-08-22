@@ -250,13 +250,13 @@ export const tasks: TaskItem[] = [
   },
   {
     id: "TASK-0011",
-    build: "feat(ext) · v07r",
-    manifest: "0.0.10",
+    build: "fix(ext) · v07f",
+    manifest: "0.0.11",
     module: "M-07r · EdgeExtension",
-    commit: "feat(ext): v07r — меню коррекции карточки, цвет ника, блеклость [TASK-0011]",
-    title: "v07r: карточка коррекции (dialog), цвет ника, блеклость «грязи»",
+    commit: "fix(ext): v07f — меню коррекции карточки, цвет ника, блеклость [TASK-0011]",
+    title: "v07f: фикс-итерация карточки коррекции (v07r = FAIL)",
     status: "queue",
-    statusLabel: "в работе · шаги по Дополнению Г",
+    statusLabel: "NEW · фикс после FAIL v07r",
     dep: "TASK-0010 = PASS (dce4ca7)",
     goal: "Клик по метке открывает карточку коррекции; маркировка рисует ▲ + заливку ника цветом карточки (~80%); «грязь» — блеклость; перерисовка без перезагрузки при изменении базы.",
     files: [
