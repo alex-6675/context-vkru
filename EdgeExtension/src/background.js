@@ -113,13 +113,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === CTX_MSG.OPEN_CARD) {
     const cardId = (msg.payload && msg.payload.cardId) || "";
-    chrome.windows.create({
-      url: "dialog.html#" + encodeURIComponent(cardId),
-      type: "popup",
-      width: 480,
-      height: 640,
-      focused: true,
-    });
+    chrome.windows.create({ url: "dialog.html#" + cardId,
+      type: "popup", width: 480, height: 640 });
   }
   return false;
 });

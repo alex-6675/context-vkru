@@ -1,40 +1,11 @@
-/* Context VK.RU · styles.css · v08r */
-/* v08r: .ctx-hl, .ctx-faded, .ctx-mark, .ctx-mark-c; палитра #001–#008. */
+/* Context VK.RU · styles.css · v07r
+ * Только классы с префиксом ctx-* — свой слой, атрибуты VK не трогаются.
+ * v06r: .ctx-mark (▲) и .ctx-mark-c (◆, закладка комментария).
+ * v07r: .ctx-hl (обёртка якоря, заливка = card.color, opacity .8 — из JS)
+ *       и .ctx-faded (status "dirt" / visual.faded → блеклость).
+ */
+.ctx-mark { color: #2b6fb3; font-size: 10px; margin-left: 4px; }
+.ctx-mark-c { color: #8a6d1f; }
 
-.ctx-hl {
-  position: relative;
-  border-radius: 3px;
-  padding: 1px 3px 1px 3px;
-  margin: 0 1px 0 1px;
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-.ctx-hl.ctx-faded {
-  opacity: 0.45;
-  filter: grayscale(100%);
-}
-
-.ctx-mark {
-  font-size: 0.9em;
-  line-height: 1;
-  margin-left: 2px;
-  cursor: pointer;
-  color: #fff;
-  text-shadow: 0 0 1px rgba(0,0,0,0.5);
-}
-
-.ctx-mark-c {
-  font-weight: bold;
-}
-
-/* Палитра (hex от VK Flat UI, прозрачность в JS) */
-.ctx-color-001 { background: #2b6fb3; } /* blue */
-.ctx-color-002 { background: #4ec0a5; } /* teal */
-.ctx-color-003 { background: #8ebe5b; } /* green */
-.ctx-color-004 { background: #f2a61b; } /* yellow */
-.ctx-color-005 { background: #e26868; } /* red */
-.ctx-color-006 { background: #c47fd5; } /* purple */
-.ctx-color-007 { background: #ff8a4d; } /* orange */
-.ctx-color-008 { background: #a0a5b9; } /* gray */
+.ctx-hl { border-radius: 2px; padding: 0 2px; }
+.ctx-faded { opacity: .45; filter: grayscale(1); }
