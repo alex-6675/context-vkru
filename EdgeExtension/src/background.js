@@ -74,7 +74,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (existing) {
     existing.lastSeen = date;
     existing.history = (existing.history || []).concat([
-      { date: date, action: "captured", portal: norm.portal, url: link, answer: "" },
+      { date: date, action: "captured", portal: norm.portal, url: CTX_NORMALIZE.cleanUrl(link), answer: "" },
     ]);
     logLine = "уже в базе (card " + existing.cardId + ")";
   } else {
@@ -88,10 +88,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       visual: { faded: false },
       identities: [{
         portal: norm.portal, id: norm.id, url: CTX_NORMALIZE.cleanUrl(link),
-        name: "", metAt: date, metUrl: metPost,
+        name: "", metAt: date, metUrl: CTX_NORMALIZE.cleanUrl(metPost),
       }],
       access: { ownerOnly: false, staffContact: "allowed" },
-      history: [{ date: date, action: "captured", portal: norm.portal, url: link, answer: "" }],
+      history: [{ date: date, action: "captured", portal: norm.portal, url: CTX_NORMALIZE.cleanUrl(link), answer: "" }],
     });
     logLine = "saved card " + cardId + " (total " + db.cards.length + ")";
   }
@@ -135,7 +135,7 @@ async function handleSaveAuthor(payload) {
   if (existing) {
     existing.lastSeen = date;
     existing.history = (existing.history || []).concat([
-      { date: date, action: "met", url: metUrl, answer: "" },
+      { date: date, action: "met", url: CTX_NORMALIZE.cleanUrl(metUrl), answer: "" },
     ]);
     console.log("[CTX " + CTX_BUILD + "] уже в базе (card " + existing.cardId + ") + точка встречи");
   } else {
@@ -149,7 +149,7 @@ async function handleSaveAuthor(payload) {
       visual: { faded: false },
       identities: [{
         portal: norm.portal, id: norm.id, url: CTX_NORMALIZE.cleanUrl(authorHref),
-        name: "", metAt: date, metUrl: metUrl,
+        name: "", metAt: date, metUrl: CTX_NORMALIZE.cleanUrl(metUrl),
       }],
       access: { ownerOnly: false, staffContact: "allowed" },
       history: [{ date: date, action: "met", url: metUrl, answer: "" }],
@@ -178,6 +178,27 @@ async function handleNameHint(payload) {
   console.log("[CTX " + CTX_BUILD + "] имя сохранено: " + card.cardId + " → " + name);
 }
 
+/* ---------- MET_HINT: точка встречи = первый комментарий (v07f3) ---------- */
+async function handleMetHint(payload) {
+  const id = payload.id || "";
+  const commentUrl = CTX_NORMALIZE.cleanUrl(payload.commentUrl || "");
+  if (!id || !commentUrl) return;
+
+  const db = await CTX_STORAGE.loadDb();
+  const card = db.cards.find(function (c) {
+    return (c.identities || []).some(function (it) { return it.id === id; });
+  });
+  if (!card) return;
+
+  /* identity.metUrl = commentUrl; url последней записи history — тоже commentUrl. */
+  const it = card.identities.find(function (x) { return x.id === id; });
+  if (it) it.metUrl = commentUrl;
+  const last = (card.history || []).slice(-1)[0];
+  if (last) last.url = commentUrl;
+  await CTX_STORAGE.saveDb(db);
+  console.log("[CTX " + CTX_BUILD + "] точка встречи: " + card.cardId + " → " + commentUrl);
+}
+
 /* ---------- приём сообщений ---------- */
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || !msg.type) return false;
@@ -196,5 +217,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === CTX_MSG.SAVE_AUTHOR) { handleSaveAuthor(msg.payload || {}); return false; }
   if (msg.type === CTX_MSG.NAME_HINT) { handleNameHint(msg.payload || {}); return false; }
+  if (msg.type === CTX_MSG.MET_HINT) { handleMetHint(msg.payload || {}); return false; }
   return false;
 });

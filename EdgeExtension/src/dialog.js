@@ -128,10 +128,13 @@
       CTX_STORAGE.saveDb(db).then(function () { renderMeet(card); });
     });
 
-    document.getElementById("btn-delete").addEventListener("click", function () {
+    /* v07f3: УДАЛЕНИЕ ДОЛЖНО УДАЛЯТЬ — filter + saveDb + close.
+     * Кнопка привязана здесь; контент по storage.onChanged сам снимет метки. */
+    var btnDelete = document.getElementById("btn-delete");
+    btnDelete.disabled = false;
+    btnDelete.addEventListener("click", function () {
       if (!window.confirm("Удалить карточку " + cardId + "? Это действие нельзя отменить.")) return;
-      var idx = db.cards.findIndex(function (c) { return c.cardId === cardId; });
-      if (idx !== -1) db.cards.splice(idx, 1);
+      db.cards = db.cards.filter(function (c) { return c.cardId !== cardId; });
       CTX_STORAGE.saveDb(db).then(function () { window.close(); });
     });
 

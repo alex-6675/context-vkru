@@ -27,6 +27,8 @@
   const COMMENT_ROOT_SEL =
     '[data-testid="wall' + U + 'comments' + U + 'comment' + U + 'root"],' +
     '[data-testid="wall' + U + 'comments' + U + 'comment' + U + 'in' + U + 'thread"]';
+  /* v07f3: дата комментария — ссылка wall…?reply=… (точка встречи). */
+  const COMMENT_DATE_SEL = 'a[data-testid="wall' + U + 'comment' + U + 'date"]';
 
   let INDEX = { byId: new Map() };
   let selfChange = false;   /* наши DOM-правки: observer не должен планировать scan */
@@ -50,12 +52,11 @@
   }
 
   /* ---------- цвет карточки → заливка ~80% ---------- */
+  /* v07f3: заливка прозрачнее — альфа ~25% (hex + "40"), текст ника читаем. */
   function fillOf(card) {
     const hex = card.color || "#2b6fb3";
-    const m = /^#([0-9a-f]{6})$/i.exec(hex);
-    if (!m) return hex;
-    const n = parseInt(m[1], 16);
-    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + ",0.8)";
+    if (!/^#[0-9a-f]{6}$/i.test(hex)) return hex;
+    return hex + "40";
   }
 
   /* ---------- обернуть якорь: заливка + маркер ▲ ---------- */
@@ -212,6 +213,20 @@
             type: CTX_MSG.NAME_HINT,
             payload: { id: p.id, name: a.textContent.trim() },
           }).catch(() => {});
+
+          /* v07f3: ТОЧКА ВСТРЕЧИ = ПЕРВОЕ ОБЩЕНИЕ.
+           * Если якорь внутри комментария — берём его дату (wall…?reply=…)
+           * как commentUrl. Вне комментария SW оставляет metPost (как сейчас). */
+          const commentRoot = a.closest(COMMENT_ROOT_SEL) || a.closest("li");
+          if (commentRoot) {
+            const dateA = commentRoot.querySelector(COMMENT_DATE_SEL);
+            if (dateA && dateA.href) {
+              chrome.runtime.sendMessage({
+                type: CTX_MSG.MET_HINT,
+                payload: { id: p.id, commentUrl: dateA.href },
+              }).catch(() => {});
+            }
+          }
           break;
         }
       }

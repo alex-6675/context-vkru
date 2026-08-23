@@ -6,6 +6,8 @@
  * v06r: + replyOf(url) — id ответа комментария из "reply=".
  * v07f2: + cleanUrl(url) — удостоверение без мусора: оставляем ТОЛЬКО
  *        reply/thread/w, отсекаем trackcode/recom и пр. (путь + оставшиеся параметры).
+ * v07f3: cleanUrl применяется ко ВСЕМ сохраняемым строкам
+ *        (identity.url, identity.metUrl, history.url); старые записи не мигрируются.
  * Regex с подчёркиванием собраны через U = String.fromCharCode(95).
  * Vanilla JS, ноль зависимостей (§2.2).
  */
