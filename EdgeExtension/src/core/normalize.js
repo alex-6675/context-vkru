@@ -1,10 +1,11 @@
-/* Context VK.RU · core/normalize.js · v07r
+/* Context VK.RU · core/normalize.js · v07f2
  * Нормализатор и опознание портала.
  * v04r: portalOf / normalize / metPostOf.
  * v05r: короткие id БЕЗ ведущего слэша; metPostOf: значение w= матчится
  * regex без "^/" (через U, по А1).
  * v06r: + replyOf(url) — id ответа комментария из "reply=".
- * v07r: версия сборки; логика без изменений.
+ * v07f2: + cleanUrl(url) — удостоверение без мусора: оставляем ТОЛЬКО
+ *        reply/thread/w, отсекаем trackcode/recom и пр. (путь + оставшиеся параметры).
  * Regex с подчёркиванием собраны через U = String.fromCharCode(95).
  * Vanilla JS, ноль зависимостей (§2.2).
  */
@@ -63,10 +64,25 @@
     catch (e) { return ""; }
   }
 
+  /* Удостоверение без мусора: путь + ТОЛЬКО reply/thread/w;
+   * trackcode/recom и прочие параметры отсекаются. */
+  function cleanUrl(raw) {
+    var KEEP = ["reply", "thread", "w"];
+    try {
+      var u = new URL(raw);
+      var keep = [];
+      u.searchParams.forEach(function (v, k) {
+        if (KEEP.indexOf(k) !== -1) keep.push(k + "=" + encodeURIComponent(v));
+      });
+      return u.origin + u.pathname + (keep.length ? "?" + keep.join("&") : "");
+    } catch (e) { return raw; }
+  }
+
   globalThis.CTX_NORMALIZE = Object.freeze({
     portalOf: portalOf,
     normalize: normalize,
     metPostOf: metPostOf,
     replyOf: replyOf,
+    cleanUrl: cleanUrl,
   });
 })();

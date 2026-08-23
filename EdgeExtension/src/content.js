@@ -1,17 +1,17 @@
-/* Context VK.RU · v07f · content.js — ПОЛНАЯ ЗАМЕНА (TASK-0011, Решение №5).
+/* Context VK.RU · v07f2 · content.js — ПОЛНАЯ ЗАМЕНА (TASK-0011, v07f2).
  * Расширение молчит, пока пользователь не скажет «вот этот».
  *
- * v07f (по RESULT_v07r.md, дефекты D1–D4):
- *  - Метки: ТОЛЬКО ▲ по карточкам person/community (byId). ◆ НЕ существует.
- *    unwrap-перерендер перед каждым scan; якоря без текста (аватары) не метить;
- *    один ▲ на карточку на контейнер (post / comment root / [role="dialog"] / body).
- *  - ПКМ по дате комментария (href содержит reply=): найти корень комментария,
- *    внутри a[data-testid="comment-owner"] — автор; послать SW SAVE_AUTHOR
- *    {authorHref, metUrl, page}. Селекторы с "_" — через String.fromCharCode(95).
- *  - NAME_HINT: после CAPTURED найти первый якорь с тем же id и непустым текстом,
- *    послать SW {id, name}.
- *  - Живой рендер: chrome.storage.onChanged → debounce 120 мс → unwrap + scan
- *    (цвет/блеклость без F5).
+ * v07f2 (по заданию):
+ *  - ИДЕМПОТЕНТНЫЙ РЕНДЕР: в начале scan() снимаем ВСЕ свои обёртки по классу
+ *    span.ctx-hl (не по массиву). Наши DOM-правки под флагом selfChange:
+ *    MutationObserver при selfChange=true НЕ планирует scan (не размножается).
+ *  - КОНТЕЙНЕРЫ (одна метка на карточку на контейнер) + предохранитель
+ *    «не более 3 меток на карточку на страницу»:
+ *    li → [data-testid=post] → корень комментария → [role=dialog] → section → body.
+ *  - Метим ТОЛЬКО ▲ по карточкам person/community (byId); ◆ НЕ существует.
+ *    Якоря без текста (аватары) не метим; якоря внутри span.ctx-hl пропускаем.
+ *  - СОХРАНЕНО (v07f): SAVE_AUTHOR (автор из комментария по ПКМ на дате),
+ *    NAME_HINT (имя из первого якоря), живой рендер storage.onChanged (120 мс).
  *
  * Свои классы ctx-*; атрибуты узлов VK не трогаются.
  * Vanilla JS, ноль зависимостей (§2.2).
@@ -29,10 +29,11 @@
     '[data-testid="wall' + U + 'comments' + U + 'comment' + U + 'in' + U + 'thread"]';
 
   let INDEX = { byId: new Map() };
-  let wrappers = [];        /* наши обёртки ctx-hl — для снятия при перерисовке */
+  let selfChange = false;   /* наши DOM-правки: observer не должен планировать scan */
   let markTimer = 0;
   const OBS_OPTS = { childList: true, subtree: true };
   const observer = new MutationObserver(() => {
+    if (selfChange) return; /* это наша правка — не пересканируем самих себя */
     clearTimeout(markTimer);
     markTimer = setTimeout(scan, 600);
   });
@@ -42,8 +43,7 @@
     const byId = new Map(); /* id -> карточка */
     (db.cards || []).forEach((card) => {
       (card.identities || []).forEach((it) => {
-        if (!it || !it.id) return;
-        byId.set(it.id, card);
+        if (it && it.id) byId.set(it.id, card);
       });
     });
     INDEX = { byId: byId };
@@ -56,17 +56,6 @@
     if (!m) return hex;
     const n = parseInt(m[1], 16);
     return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + ",0.8)";
-  }
-
-  /* ---------- снять свои обёртки (вернуть якоря как было) ---------- */
-  function unwrapAll() {
-    wrappers.forEach((w) => {
-      const parent = w.parentNode;
-      if (!parent) return;
-      while (w.firstChild) parent.insertBefore(w.firstChild, w);
-      parent.removeChild(w);
-    });
-    wrappers = [];
   }
 
   /* ---------- обернуть якорь: заливка + маркер ▲ ---------- */
@@ -89,58 +78,71 @@
         .catch(() => {});
     });
     hl.appendChild(mark);
-
-    wrappers.push(hl);
   }
 
-  /* ---------- контейнер для правила «один ▲ на карточку» ---------- */
+  /* ---------- контейнер для правила «одна метка на карточку» ---------- */
   function containerOf(a) {
     return (
+      a.closest("li") ||
       a.closest('[data-testid="post"]') ||
       a.closest(COMMENT_ROOT_SEL) ||
       a.closest('[role="dialog"]') ||
+      a.closest("section") ||
       document.body
     );
   }
 
-  /* ---------- скан якорей ---------- */
+  /* ---------- скан якорей (идемпотентный) ---------- */
   function scan() {
-    observer.disconnect(); /* свои мутации не должны будить наблюдателя */
-    unwrapAll();
+    selfChange = true;
+    try {
+      /* 1) снять ВСЕ свои обёртки по классу (не по массиву) */
+      document.querySelectorAll("span.ctx-hl").forEach((w) => {
+        const a = w.querySelector("a");
+        if (a && w.parentNode) w.parentNode.insertBefore(a, w);
+        if (w.parentNode) w.remove();
+      });
 
-    const seenAnchors = new WeakSet();          /* дубли якорей в одном проходе */
-    const perCard = new Map();                  /* cardId -> Set(контейнеров) */
-    let marked = 0;
+      /* 2) метим заново */
+      const perCard = new Map(); /* cardId -> Set(контейнеров) — одна метка на контейнер */
+      const cardCount = {};      /* cardId -> число меток на странице (предохранитель ≤ 3) */
+      let marked = 0;
 
-    document.querySelectorAll("a[href]").forEach((a) => {
-      if (seenAnchors.has(a) || a.closest(".ctx-hl")) return;
-      if (!a.textContent.trim()) return;        /* якоря без текста (аватары) не метим */
-      const href = a.getAttribute("href");
-      if (!href) return;
+      document.querySelectorAll("a[href]").forEach((a) => {
+        if (a.closest("span.ctx-hl")) return;   /* уже обёрнут */
+        if (!a.textContent.trim()) return;      /* якоря без текста (аватары) не метим */
+        const href = a.getAttribute("href");
+        if (!href) return;
 
-      let abs;
-      try { abs = new URL(href, location.origin).href; } catch (e) { return; }
+        let abs;
+        try { abs = new URL(href, location.origin).href; } catch (e) { return; }
 
-      const norm = CTX_NORMALIZE.normalize(abs, "save-person");
-      if (!norm.id) return;
+        const norm = CTX_NORMALIZE.normalize(abs, "save-person");
+        if (!norm.id) return;
 
-      const card = INDEX.byId.get(norm.id);
-      if (!card) return;
+        const card = INDEX.byId.get(norm.id);
+        if (!card) return;
 
-      /* один ▲ на карточку на контейнер */
-      const container = containerOf(a);
-      let containers = perCard.get(card.cardId);
-      if (!containers) { containers = new Set(); perCard.set(card.cardId, containers); }
-      if (containers.has(container)) return;
-      containers.add(container);
+        /* предохранитель: не более 3 меток на карточку на страницу */
+        if ((cardCount[card.cardId] || 0) >= 3) return;
 
-      seenAnchors.add(a);
-      wrap(a, card);
-      marked++;
-    });
+        /* одна метка на карточку на контейнер */
+        const container = containerOf(a);
+        let containers = perCard.get(card.cardId);
+        if (!containers) { containers = new Set(); perCard.set(card.cardId, containers); }
+        if (containers.has(container)) return;
+        containers.add(container);
 
-    observer.observe(document.body, OBS_OPTS);
-    console.log("[CTX " + CTX_BUILD + "] marked " + marked + " anchors");
+        cardCount[card.cardId] = (cardCount[card.cardId] || 0) + 1;
+        wrap(a, card);
+        marked++;
+      });
+
+      console.log("[CTX " + CTX_BUILD + "] marked " + marked + " anchors");
+    } finally {
+      /* observer-microtask отработает раньше этого macrotask'а → флаг снимется после */
+      setTimeout(() => { selfChange = false; }, 0);
+    }
   }
 
   /* ---------- старт ---------- */
