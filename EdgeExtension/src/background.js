@@ -1,4 +1,4 @@
-/* Context VK.RU · v07f5 · background.js
+/* Context VK.RU · v07f6 · background.js
  * v03r: ПКМ-изъятие — браузер сам отдаёт linkUrl/pageUrl (Решение №2).
  * v04r: нормализатор — портал, id, тип (из меню), metPost (из page).
  * v05r: запись в базу (chrome.storage.local) по контракту карточки v2.
@@ -19,6 +19,9 @@
  *   перед saveDb (read-modify-write); лог «db записана (total N)» после каждой записи.
  * v07f5: граница персона/сообщество (R16) — при изъятии пишется card.type
  *   PERSON|COMMUNITY; обработчик LOG — «ясные» логи записи в SW-консоли.
+ * v07f6: NAME_HINT — displayName пишется ТОЛЬКО если пуст; если уже задан —
+ *   НЕ трогается (лог «имя НЕ тронуто: cN (уже задано)»); identity.name —
+ *   только если пуст. В db пишем лишь при фактическом изменении.
  * Vanilla JS, ноль зависимостей (§2.2).
  */
 importScripts("./core/messaging.js");
@@ -180,12 +183,27 @@ async function handleNameHint(payload) {
   });
   if (!card) return;
 
+  /* v07f6: имя — только если пусто. Если displayName уже задан
+   * (пользователем или ранее) — НЕ трогаем и явно логируем. */
   const it = card.identities.find(function (x) { return x.id === id; });
-  if (it && !it.name) it.name = name;
-  if (!card.displayName) card.displayName = name;
-  await CTX_STORAGE.saveDb(db);
-  console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
-  console.log("[CTX " + CTX_BUILD + "] имя сохранено: " + card.cardId + " → " + name);
+  let identityUpdated = false;
+  if (it && !it.name) { it.name = name; identityUpdated = true; }
+
+  if (!card.displayName) {
+    /* displayName пуст — записываем имя */
+    card.displayName = name;
+    await CTX_STORAGE.saveDb(db);
+    console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
+    console.log("[CTX " + CTX_BUILD + "] имя сохранено: " + card.cardId + " → " + name);
+  } else if (identityUpdated) {
+    /* displayName уже задан — его не трогаем, но identity.name обновили */
+    await CTX_STORAGE.saveDb(db);
+    console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
+    console.log("[CTX " + CTX_BUILD + "] имя НЕ тронуто: " + card.cardId + " (уже задано)");
+  } else {
+    /* менять нечего — не пишем */
+    console.log("[CTX " + CTX_BUILD + "] имя НЕ тронуто: " + card.cardId + " (уже задано)");
+  }
 }
 
 /* ---------- MET_HINT: точка встречи = первый комментарий (v07f3) ---------- */

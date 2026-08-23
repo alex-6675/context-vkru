@@ -1,4 +1,4 @@
-/* Context VK.RU · core/messaging.js · v07f3
+/* Context VK.RU · core/messaging.js · v07f6
  * Общие константы сообщений (MV3 message passing).
  *
  * v03r: CAPTURED (background -> content).
@@ -8,13 +8,14 @@
  * v07f3: + MET_HINT (content -> background: точка встречи = первый комментарий,
  *        wall…?reply=… из a[data-testid="wall_comment_date"]).
  * v07f5: + LOG (dialog/content -> background: «ясные» логи записи в SW-консоли).
+ * v07f6: версия сборки v07f6 (типы сообщений без изменений).
  *
  * Подключение: в content-скрипты — манифестом, ПЕРЕД content.js;
  * в Service Worker — importScripts("./core/messaging.js").
  * Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2).
  */
 
-const CTX_BUILD = "v07f5";
+const CTX_BUILD = "v07f6";
 
 const CTX_MSG = Object.freeze({
   CAPTURED: "ctx:captured",

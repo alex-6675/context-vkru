@@ -1,15 +1,15 @@
-/* Context VK.RU · v07f5 · content.js — ПОЛНАЯ ЗАМЕНА (TASK-0011, v07f2).
+/* Context VK.RU · v07f6 · content.js — ПОЛНАЯ ЗАМЕНА (TASK-0011, v07f2).
  * Расширение молчит, пока пользователь не скажет «вот этот».
  *
  * v07f2 (по заданию):
  *  - ИДЕМПОТЕНТНЫЙ РЕНДЕР: в начале scan() снимаем ВСЕ свои обёртки по классу
  *    span.ctx-hl (не по массиву). Наши DOM-правки под флагом selfChange:
  *    MutationObserver при selfChange=true НЕ планирует scan (не размножается).
- *  - КОНТЕЙНЕРЫ (одна метка на карточку на контейнер) + предохранитель
- *    «не более 3 меток на карточку на страницу»:
- *    li → [data-testid=post] → корень комментария → [role=dialog] → section → body.
  *  - Метим ТОЛЬКО ▲ по карточкам person/community (byId); ◆ НЕ существует.
  *    Якоря без текста (аватары) не метим; якоря внутри span.ctx-hl пропускаем.
+ * v07f6: предохранители «одна метка на контейнер» и «≤3 на страницу» УБРАНЫ
+ *    (в мессенджере/тредах они съедали метки). Теперь — один ▲ на каждое
+ *    вхождение сохранённой карточки.
  *  - СОХРАНЕНО (v07f): SAVE_AUTHOR (автор из комментария по ПКМ на дате),
  *    NAME_HINT (имя из первого якоря), живой рендер storage.onChanged.
  * v07f3: заливка ~25%; точка встречи (MET_HINT) из wall_comment_date.
@@ -90,19 +90,11 @@
     hl.appendChild(mark);
   }
 
-  /* ---------- контейнер для правила «одна метка на карточку» ---------- */
-  function containerOf(a) {
-    return (
-      a.closest("li") ||
-      a.closest('[data-testid="post"]') ||
-      a.closest(COMMENT_ROOT_SEL) ||
-      a.closest('[role="dialog"]') ||
-      a.closest("section") ||
-      document.body
-    );
-  }
-
   /* ---------- скан якорей (идемпотентный) ---------- */
+  /* v07f6: БЕЗ предохранителей. В плотных видах (мессенджер, треды) лимит
+   * «≤3 на страницу» и «одна на контейнер» съедал метки — пользователь видел
+   * «маркировка исчезла». Теперь метим КАЖДЫЙ текстовый якорь сохранённой
+   * карточки (один ▲ на вхождение). */
   function scan() {
     selfChange = true;
     try {
@@ -113,9 +105,7 @@
         if (w.parentNode) w.remove();
       });
 
-      /* 2) метим заново */
-      const perCard = new Map(); /* cardId -> Set(контейнеров) — одна метка на контейнер */
-      const cardCount = {};      /* cardId -> число меток на странице (предохранитель ≤ 3) */
+      /* 2) метим заново: каждый текстовый якорь сохранённой карточки */
       let marked = 0;
 
       document.querySelectorAll("a[href]").forEach((a) => {
@@ -133,17 +123,6 @@
         const card = INDEX.byId.get(norm.id);
         if (!card) return;
 
-        /* предохранитель: не более 3 меток на карточку на страницу */
-        if ((cardCount[card.cardId] || 0) >= 3) return;
-
-        /* одна метка на карточку на контейнер */
-        const container = containerOf(a);
-        let containers = perCard.get(card.cardId);
-        if (!containers) { containers = new Set(); perCard.set(card.cardId, containers); }
-        if (containers.has(container)) return;
-        containers.add(container);
-
-        cardCount[card.cardId] = (cardCount[card.cardId] || 0) + 1;
         wrap(a, card.cardId);
         marked++;
       });
