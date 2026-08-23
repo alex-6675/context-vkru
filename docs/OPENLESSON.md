@@ -50,3 +50,38 @@ soldier v2:
            normalized: {city, street}, gap: true|false}   // ДЫРА
 - plate: none | documented | approved | engraved
 ```
+
+# ПОПРАВКА (OPENLESSON v3 + soldier v2.1 + R14-действия)
+0. Образец представительства = Niesky (русские в Германии):
+   карточка + evidence + проверка МО. Балаклава: нем. инициатива
+   консолидированного перезахоронения (источник: sgvavia, пост 1).
+1. soldier v2.1: CSV-каркас принят как база; source = ЦАМО/obd id+url;
+   burial.primary/reburial дополняются с obd («Откуда перезахоронен» /
+   «Место захоронения»); place_birth = search_city.
+2. R14-действия бота: обогащение по document_id; группировка плит
+   по «Откуда перезахоронен»; фильтр участка (warunit+даты+сектор);
+   нить потомков (фамилия+place_birth); верификация МО.
+
+   ```
+// Маппинг заголовков полей для obd-memorial.ru
+const OBD_FIELD_MAPPINGS = {
+  'Фамилия': 'last_name',
+  'Имя': 'first_name',
+  'Отчество': 'patronymic',
+  'Дата рождения/Возраст': 'birth_date',
+  'Дата рождения': 'birth_date',
+  'Место рождения': 'birth_place',
+  'Дата выбытия': 'death_date',
+  'Воинское звание': 'military_rank',
+  'Последнее место службы': 'military_unit',
+  'Причина выбытия': 'cause_of_death',
+  'Первичное место захоронения': 'primary_burial',
+  'Место захоронения': 'primary_burial',
+  'Место выбытия': 'primary_burial',
+  'Дата и место призыва': 'conscription_location',
+  'Место призыва': 'conscription_location',
+  'Номер фонда источника информации': 'tsamo_fond',
+  'Номер описи источника информации': 'tsamo_opis',
+  'Номер дела источника информации': 'tsamo_delo'
+};
+```
