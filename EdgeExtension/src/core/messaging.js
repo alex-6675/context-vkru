@@ -1,4 +1,4 @@
-/* Context VK.RU · core/messaging.js · v07f6
+/* Context VK.RU · core/messaging.js · v07d
  * Общие константы сообщений (MV3 message passing).
  *
  * v03r: CAPTURED (background -> content).
@@ -9,6 +9,8 @@
  *        wall…?reply=… из a[data-testid="wall_comment_date"]).
  * v07f5: + LOG (dialog/content -> background: «ясные» логи записи в SW-консоли).
  * v07f6: версия сборки v07f6 (типы сообщений без изменений).
+ * v07d: ДИАГНОСТИКА — версия сборки v07d (логи-самопроверки в content.js,
+ *       типы сообщений и поведение без изменений).
  *
  * Подключение: в content-скрипты — манифестом, ПЕРЕД content.js;
  * в Service Worker — importScripts("./core/messaging.js").

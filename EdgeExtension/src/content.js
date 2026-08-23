@@ -1,4 +1,4 @@
-/* Context VK.RU · v07f6 · content.js — ПОЛНАЯ ЗАМЕНА (TASK-0011, v07f2).
+/* Context VK.RU · v07d · content.js — ПОЛНАЯ ЗАМЕНА (TASK-0011, v07f2).
  * Расширение молчит, пока пользователь не скажет «вот этот».
  *
  * v07f2 (по заданию):
@@ -16,6 +16,9 @@
  * v07f5 (D21): ЖИВАЯ ПЕРЕКРАСКА — storage.onChanged → buildIndex(newValue) →
  *    scan() сразу; wrap() читает карточку ИЗ ИНДЕКСА в момент рендера
  *    (цвет/статус из свежей базы, не из замыкания).
+ * v07d: ДИАГНОСТИКА (логи, поведение не меняется): после разметки через 500 мс
+ *    «marked in scan: M; wrappers in DOM: N» и «anchors for <LAST_ID>: K; wrapped: W»;
+ *    при планировании observer'ом — «observer: scan scheduled».
  *
  * Свои классы ctx-*; атрибуты узлов VK не трогаются.
  * Vanilla JS, ноль зависимостей (§2.2).
@@ -37,11 +40,13 @@
   let INDEX = { byId: new Map() };
   let selfChange = false;   /* наши DOM-правки: observer не должен планировать scan */
   let markTimer = 0;
+  let LAST_ID = "";         /* v07d: id из последнего CAPTURED — для самопроверки */
   const OBS_OPTS = { childList: true, subtree: true };
   const observer = new MutationObserver(() => {
     if (selfChange) return; /* это наша правка — не пересканируем самих себя */
     clearTimeout(markTimer);
     markTimer = setTimeout(scan, 600);
+    console.log("[CTX " + CTX_BUILD + "] observer: scan scheduled"); /* v07d */
   });
 
   /* ---------- индекс по базе (только byId — метим лишь ▲) ---------- */
@@ -128,6 +133,32 @@
       });
 
       console.log("[CTX " + CTX_BUILD + "] marked " + marked + " anchors");
+
+      /* v07d: самопроверка маркировки (логи, поведение не меняется).
+       * Через 500 мс сверяем: сколько меток реально в DOM против marked,
+       * и для последнего изъятого id — сколько якорей и сколько обёрнуто. */
+      setTimeout(() => {
+        const wrappersInDom = document.querySelectorAll(".ctx-hl").length;
+        console.log("[CTX " + CTX_BUILD + "] marked in scan: " + marked +
+          "; wrappers in DOM: " + wrappersInDom);
+        if (LAST_ID) {
+          let totalAnchors = 0;
+          let wrappedAnchors = 0;
+          document.querySelectorAll("a[href]").forEach((a) => {
+            if (!a.textContent.trim()) return;
+            const href = a.getAttribute("href");
+            if (!href) return;
+            let abs;
+            try { abs = new URL(href, location.origin).href; } catch (e) { return; }
+            const norm = CTX_NORMALIZE.normalize(abs, "save-person");
+            if (!norm.id || norm.id !== LAST_ID) return;
+            totalAnchors++;
+            if (a.closest(".ctx-hl")) wrappedAnchors++;
+          });
+          console.log("[CTX " + CTX_BUILD + "] anchors for " + LAST_ID +
+            ": " + totalAnchors + "; wrapped: " + wrappedAnchors);
+        }
+      }, 500);
     } finally {
       /* observer-microtask отработает раньше этого macrotask'а → флаг снимется после */
       setTimeout(() => { selfChange = false; }, 0);
@@ -181,6 +212,7 @@
   chrome.runtime.onMessage.addListener((msg) => {
     if (!msg || msg.type !== CTX_MSG.CAPTURED) return;
     const p = msg.payload || {};
+    LAST_ID = p.id || ""; /* v07d: для самопроверки маркировки */
     console.log("[CTX " + CTX_BUILD + "] captured | menu: " + p.menu +
       " | portal: " + p.portal + " | id: " + p.id + " | type: " + p.type +
       " | metPost: " + p.metPost +
