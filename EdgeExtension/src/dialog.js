@@ -1,9 +1,11 @@
-/* Context VK.RU · dialog.js · v07f
+/* Context VK.RU · dialog.js · v07f2
  * Страница карточки коррекции (открывается из SW через chrome.windows.create,
  * url: dialog.html#cardId). Поля: displayName, note, status, цвет (палитра 5),
  * identities — только чтение.
  * v07f: кнопка «Удалить карточку» (подтверждение внутри окна) → удалить из db,
  * saveDb, закрыть окно.
+ * v07f2: раздел «ТОЧКА ВСТРЕЧИ» (только чтение) — для каждого удостоверения metUrl,
+ * ниже история: последние 5 строк «дата · действие · url».
  * «Сохранить» → saveDb → закрыть окно. Поле access не трогается.
  * Vanilla JS, ноль зависимостей (§2.2).
  */
@@ -76,6 +78,35 @@
         ul.appendChild(li);
       });
     }
+
+    /* Точка встречи и история (чтение, последние 5) */
+    renderMeet(card);
+  }
+
+  /* «дата · кто · точка встречи (url) · ответ» + селект ответа */
+  function renderMeet(card) {
+    var meet = document.getElementById("f-meet");
+    meet.innerHTML = "";
+    var who = card.displayName ||
+      ((card.identities && card.identities[0] && card.identities[0].id) || card.cardId);
+    var last5 = (card.history || []).slice(-5).reverse();
+    if (!last5.length) {
+      var empty = document.createElement("li");
+      empty.className = "empty";
+      empty.textContent = "встреч пока нет";
+      meet.appendChild(empty);
+    } else {
+      last5.forEach(function (h) {
+        var li = document.createElement("li");
+        li.textContent = (h.date || "") + " · " + who + " · " + (h.url || "") +
+          " · " + (h.answer || "нет ответа");
+        meet.appendChild(li);
+      });
+    }
+    var sel = document.getElementById("f-answer");
+    var last = (card.history || []).slice(-1)[0];
+    sel.disabled = !last;
+    sel.value = (last && last.answer) ? last.answer : "нет ответа";
   }
 
   function wire(card, db) {
@@ -87,6 +118,14 @@
       card.visual = card.visual || {};
       card.visual.faded = card.status === "dirt"; /* «грязь» → блеклость */
       CTX_STORAGE.saveDb(db).then(function () { window.close(); });
+    });
+
+    /* «Ответ последнего контакта» → answer в последнюю запись истории */
+    document.getElementById("f-answer").addEventListener("change", function () {
+      var last = (card.history || []).slice(-1)[0];
+      if (!last) return;
+      last.answer = document.getElementById("f-answer").value;
+      CTX_STORAGE.saveDb(db).then(function () { renderMeet(card); });
     });
 
     document.getElementById("btn-delete").addEventListener("click", function () {

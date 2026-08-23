@@ -1,4 +1,4 @@
-/* Context VK.RU · v07f · background.js
+/* Context VK.RU · v07f2 · background.js
  * v03r: ПКМ-изъятие — браузер сам отдаёт linkUrl/pageUrl (Решение №2).
  * v04r: нормализатор — портал, id, тип (из меню), metPost (из page).
  * v05r: запись в базу (chrome.storage.local) по контракту карточки v2.
@@ -11,6 +11,9 @@
  *     «автор сохранён (card cN)»; автор не найден → «автор не найден — не сохранено».
  *   - Одно окно на карточку: карта cardId→windowId, focus вместо create.
  *   - NAME_HINT: имя из первого якоря → identity.name и displayName (если пуст).
+ * v07f2: удостоверение без мусора — identity.url = cleanUrl(link)
+ *   (только reply/thread/w; trackcode/recom и пр. отсекаются);
+ *   запись истории {date, action, url, answer} (Решение №7).
  * Vanilla JS, ноль зависимостей (§2.2).
  */
 importScripts("./core/messaging.js");
@@ -71,7 +74,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (existing) {
     existing.lastSeen = date;
     existing.history = (existing.history || []).concat([
-      { date: date, action: "captured", portal: norm.portal, url: link },
+      { date: date, action: "captured", portal: norm.portal, url: link, answer: "" },
     ]);
     logLine = "уже в базе (card " + existing.cardId + ")";
   } else {
@@ -84,11 +87,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       status: "saved",
       visual: { faded: false },
       identities: [{
-        portal: norm.portal, id: norm.id, url: link,
+        portal: norm.portal, id: norm.id, url: CTX_NORMALIZE.cleanUrl(link),
         name: "", metAt: date, metUrl: metPost,
       }],
       access: { ownerOnly: false, staffContact: "allowed" },
-      history: [{ date: date, action: "captured", portal: norm.portal, url: link }],
+      history: [{ date: date, action: "captured", portal: norm.portal, url: link, answer: "" }],
     });
     logLine = "saved card " + cardId + " (total " + db.cards.length + ")";
   }
@@ -132,7 +135,7 @@ async function handleSaveAuthor(payload) {
   if (existing) {
     existing.lastSeen = date;
     existing.history = (existing.history || []).concat([
-      { date: date, action: "met", url: metUrl },
+      { date: date, action: "met", url: metUrl, answer: "" },
     ]);
     console.log("[CTX " + CTX_BUILD + "] уже в базе (card " + existing.cardId + ") + точка встречи");
   } else {
@@ -145,11 +148,11 @@ async function handleSaveAuthor(payload) {
       status: "saved",
       visual: { faded: false },
       identities: [{
-        portal: norm.portal, id: norm.id, url: authorHref,
+        portal: norm.portal, id: norm.id, url: CTX_NORMALIZE.cleanUrl(authorHref),
         name: "", metAt: date, metUrl: metUrl,
       }],
       access: { ownerOnly: false, staffContact: "allowed" },
-      history: [{ date: date, action: "met", url: metUrl }],
+      history: [{ date: date, action: "met", url: metUrl, answer: "" }],
     });
     console.log("[CTX " + CTX_BUILD + "] автор сохранён (card " + cardId + ")");
   }
