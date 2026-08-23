@@ -7,14 +7,14 @@
  *       и NAME_HINT (content -> background: имя из первого якоря).
  * v07f3: + MET_HINT (content -> background: точка встречи = первый комментарий,
  *        wall…?reply=… из a[data-testid="wall_comment_date"]).
- * v07f4: версия сборки v07f4 (типы сообщений без изменений).
+ * v07f5: + LOG (dialog/content -> background: «ясные» логи записи в SW-консоли).
  *
  * Подключение: в content-скрипты — манифестом, ПЕРЕД content.js;
  * в Service Worker — importScripts("./core/messaging.js").
  * Vanilla JS, ноль зависимостей (РЕГЛАМЕНТ §2.2).
  */
 
-const CTX_BUILD = "v07f4";
+const CTX_BUILD = "v07f5";
 
 const CTX_MSG = Object.freeze({
   CAPTURED: "ctx:captured",
@@ -22,6 +22,7 @@ const CTX_MSG = Object.freeze({
   SAVE_AUTHOR: "ctx:save-author",
   NAME_HINT: "ctx:name-hint",
   MET_HINT: "ctx:met-hint",
+  LOG: "ctx:log",
 });
 
 globalThis.CTX_BUILD = CTX_BUILD;

@@ -1,4 +1,4 @@
-/* Context VK.RU · v07f2 · content.js — ПОЛНАЯ ЗАМЕНА (TASK-0011, v07f2).
+/* Context VK.RU · v07f5 · content.js — ПОЛНАЯ ЗАМЕНА (TASK-0011, v07f2).
  * Расширение молчит, пока пользователь не скажет «вот этот».
  *
  * v07f2 (по заданию):
@@ -11,7 +11,11 @@
  *  - Метим ТОЛЬКО ▲ по карточкам person/community (byId); ◆ НЕ существует.
  *    Якоря без текста (аватары) не метим; якоря внутри span.ctx-hl пропускаем.
  *  - СОХРАНЕНО (v07f): SAVE_AUTHOR (автор из комментария по ПКМ на дате),
- *    NAME_HINT (имя из первого якоря), живой рендер storage.onChanged (120 мс).
+ *    NAME_HINT (имя из первого якоря), живой рендер storage.onChanged.
+ * v07f3: заливка ~25%; точка встречи (MET_HINT) из wall_comment_date.
+ * v07f5 (D21): ЖИВАЯ ПЕРЕКРАСКА — storage.onChanged → buildIndex(newValue) →
+ *    scan() сразу; wrap() читает карточку ИЗ ИНДЕКСА в момент рендера
+ *    (цвет/статус из свежей базы, не из замыкания).
  *
  * Свои классы ctx-*; атрибуты узлов VK не трогаются.
  * Vanilla JS, ноль зависимостей (§2.2).
@@ -51,8 +55,8 @@
     INDEX = { byId: byId };
   }
 
-  /* ---------- цвет карточки → заливка ~80% ---------- */
-  /* v07f3: заливка прозрачнее — альфа ~25% (hex + "40"), текст ника читаем. */
+  /* ---------- цвет карточки → заливка ~25% ---------- */
+  /* v07f3: альфа ~25% (hex + "40"), текст ника читаем. */
   function fillOf(card) {
     const hex = card.color || "#2b6fb3";
     if (!/^#[0-9a-f]{6}$/i.test(hex)) return hex;
@@ -60,7 +64,12 @@
   }
 
   /* ---------- обернуть якорь: заливка + маркер ▲ ---------- */
-  function wrap(anchor, card) {
+  /* v07f5 (D21): карточка читается ИЗ ИНДЕКСА в момент рендера —
+   * цвет/статус всегда из свежей базы, не из замыкания. */
+  function wrap(anchor, cardId) {
+    const card = INDEX.byId.get(cardId);
+    if (!card) return;
+
     const hl = document.createElement("span");
     hl.className = "ctx-hl" + (card.status === "dirt" ? " ctx-faded" : "");
     hl.style.background = fillOf(card);
@@ -75,7 +84,7 @@
       e.preventDefault();
       e.stopPropagation();
       chrome.runtime
-        .sendMessage({ type: CTX_MSG.OPEN_CARD, payload: { cardId: card.cardId } })
+        .sendMessage({ type: CTX_MSG.OPEN_CARD, payload: { cardId: cardId } })
         .catch(() => {});
     });
     hl.appendChild(mark);
@@ -135,7 +144,7 @@
         containers.add(container);
 
         cardCount[card.cardId] = (cardCount[card.cardId] || 0) + 1;
-        wrap(a, card);
+        wrap(a, card.cardId);
         marked++;
       });
 
@@ -179,14 +188,14 @@
   }, true);
 
   /* ---------- живой рендер: база изменилась (без F5) ---------- */
+  /* v07f5 (D21): сразу перестроить индекс из newValue и пересканировать —
+   * перекраска живая, без задержки; fillOf читает цвет из нового индекса. */
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local" || !changes[CTX_STORAGE.KEY]) return;
     clearTimeout(markTimer);
-    markTimer = setTimeout(() => {
-      const next = changes[CTX_STORAGE.KEY].newValue || { cards: [] };
-      buildIndex(next);
-      scan();
-    }, 120);
+    const next = changes[CTX_STORAGE.KEY].newValue || { cards: [] };
+    buildIndex(next);
+    scan();
   });
 
   /* ---------- приём CAPTURED (лог изъятия + NAME_HINT) ---------- */

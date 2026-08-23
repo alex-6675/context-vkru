@@ -1,4 +1,4 @@
-/* Context VK.RU · dialog.js · v07f4
+/* Context VK.RU · dialog.js · v07f5
  * Страница карточки коррекции (открывается из SW через chrome.windows.create,
  * url: dialog.html#cardId). Поля: displayName, note, status, цвет (палитра 5),
  * identities — только чтение.
@@ -9,6 +9,9 @@
  * v07f4: ПРАВИЛО ЕДИНСТВЕННОГО ПИСАТЕЛЯ — каждый saveDb только после свежего
  * loadDb в том же обработчике (read-modify-write, устраняет воскрешение/стирание);
  * селект ответа — только «ожидание / да / нет» (маппинг старых значений).
+ * v07f5: селект «тип» (персона/сообщество, R16) под статусом с разделительной
+ * линией, правка сохраняется в card.type; «ясные» логи записи/удаления через
+ * LOG-сообщение в SW («card cN saved», «card cN удалена»).
  * «Сохранить» → saveDb → закрыть окно. Поле access не трогается.
  * Vanilla JS, ноль зависимостей (§2.2).
  */
@@ -55,6 +58,8 @@
     document.getElementById("f-name").value = card.displayName || "";
     document.getElementById("f-note").value = card.note || "";
     document.getElementById("f-status").value = card.status || "saved";
+    /* v07f5 (R16): тип персона/сообщество; старые карточки без type — персона */
+    document.getElementById("f-type").value = card.type === "COMMUNITY" ? "COMMUNITY" : "PERSON";
     chosenColor = card.color || PALETTE[0];
 
     var pal = document.getElementById("f-palette");
@@ -134,11 +139,15 @@
       fresh.displayName = document.getElementById("f-name").value;
       fresh.note = document.getElementById("f-note").value;
       fresh.status = document.getElementById("f-status").value;
+      fresh.type = document.getElementById("f-type").value; /* v07f5 (R16) */
       fresh.color = chosenColor;
       fresh.visual = fresh.visual || {};
       fresh.visual.faded = fresh.status === "dirt"; /* «грязь» → блеклость */
       await CTX_STORAGE.saveDb(db);
       console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
+      /* v07f5: «ясный» лог записи в SW-консоли */
+      chrome.runtime.sendMessage({ type: CTX_MSG.LOG,
+        payload: { text: "card " + cardId + " saved" } }).catch(function () {});
       window.close();
     });
 
@@ -166,6 +175,9 @@
       await CTX_STORAGE.saveDb(db);
       console.log("[CTX " + CTX_BUILD + "] card " + cardId + " удалена");
       console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
+      /* v07f5: «ясный» лог удаления в SW-консоли */
+      chrome.runtime.sendMessage({ type: CTX_MSG.LOG,
+        payload: { text: "card " + cardId + " удалена" } }).catch(function () {});
       window.close();
     });
 

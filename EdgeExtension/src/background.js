@@ -1,4 +1,4 @@
-/* Context VK.RU · v07f2 · background.js
+/* Context VK.RU · v07f5 · background.js
  * v03r: ПКМ-изъятие — браузер сам отдаёт linkUrl/pageUrl (Решение №2).
  * v04r: нормализатор — портал, id, тип (из меню), metPost (из page).
  * v05r: запись в базу (chrome.storage.local) по контракту карточки v2.
@@ -17,6 +17,8 @@
  * v07f3: точка встречи = первый комментарий (MET_HINT из wall_comment_date).
  * v07f4: правило единственного писателя — каждый обработчик читает свежую db
  *   перед saveDb (read-modify-write); лог «db записана (total N)» после каждой записи.
+ * v07f5: граница персона/сообщество (R16) — при изъятии пишется card.type
+ *   PERSON|COMMUNITY; обработчик LOG — «ясные» логи записи в SW-консоли.
  * Vanilla JS, ноль зависимостей (§2.2).
  */
 importScripts("./core/messaging.js");
@@ -87,6 +89,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       created: date,
       displayName: "",
       note: "",
+      type: norm.type, /* v07f5 (R16): PERSON | COMMUNITY — из пункта меню */
       status: "saved",
       visual: { faded: false },
       identities: [{
@@ -149,6 +152,7 @@ async function handleSaveAuthor(payload) {
       created: date,
       displayName: "",
       note: "",
+      type: "PERSON", /* v07f5 (R16): автор комментария — всегда персона */
       status: "saved",
       visual: { faded: false },
       identities: [{
@@ -225,5 +229,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === CTX_MSG.SAVE_AUTHOR) { handleSaveAuthor(msg.payload || {}); return false; }
   if (msg.type === CTX_MSG.NAME_HINT) { handleNameHint(msg.payload || {}); return false; }
   if (msg.type === CTX_MSG.MET_HINT) { handleMetHint(msg.payload || {}); return false; }
+  /* v07f5: «ясные» логи записи из диалога в SW-консоли */
+  if (msg.type === CTX_MSG.LOG) {
+    console.log("[CTX " + CTX_BUILD + "] " + ((msg.payload && msg.payload.text) || ""));
+    return false;
+  }
   return false;
 });
