@@ -1,11 +1,14 @@
-/* Context VK.RU · dialog.js · v07f2
+/* Context VK.RU · dialog.js · v07f4
  * Страница карточки коррекции (открывается из SW через chrome.windows.create,
  * url: dialog.html#cardId). Поля: displayName, note, status, цвет (палитра 5),
  * identities — только чтение.
  * v07f: кнопка «Удалить карточку» (подтверждение внутри окна) → удалить из db,
  * saveDb, закрыть окно.
- * v07f2: раздел «ТОЧКА ВСТРЕЧИ» (только чтение) — для каждого удостоверения metUrl,
- * ниже история: последние 5 строк «дата · действие · url».
+ * v07f2: раздел «ТОЧКА ВСТРЕЧИ И ИСТОРИЯ» (чтение, последние 5) —
+ * «дата · кто · точка встречи (url) · ответ» + селект «ответ последнего контакта».
+ * v07f4: ПРАВИЛО ЕДИНСТВЕННОГО ПИСАТЕЛЯ — каждый saveDb только после свежего
+ * loadDb в том же обработчике (read-modify-write, устраняет воскрешение/стирание);
+ * селект ответа — только «ожидание / да / нет» (маппинг старых значений).
  * «Сохранить» → saveDb → закрыть окно. Поле access не трогается.
  * Vanilla JS, ноль зависимостей (§2.2).
  */
@@ -15,6 +18,15 @@
   var PALETTE = ["#2b6fb3", "#3a7d44", "#a63d40", "#8a6d1f", "#6b5b95"];
   var cardId = decodeURIComponent(location.hash.slice(1));
   var chosenColor = PALETTE[0];
+
+  /* v07f4: селект — только «ожидание / да / нет».
+   * Маппинг при чтении старых записей:
+   * нет ответа→ожидание; ответила|согласилась→да; отказ→нет. */
+  function normalizeAnswer(a) {
+    if (a === "да" || a === "ответила" || a === "согласилась") return "да";
+    if (a === "нет" || a === "отказ") return "нет";
+    return "ожидание"; /* "" / "нет ответа" / неизвестное */
+  }
 
   CTX_STORAGE.loadDb().then(function (db) {
     var card = null;
@@ -33,7 +45,7 @@
       return;
     }
     fill(card);
-    wire(card, db);
+    wire(card);
   }).catch(function () {
     document.getElementById("card-id").textContent = "ошибка чтения базы";
   });
@@ -99,43 +111,62 @@
       last5.forEach(function (h) {
         var li = document.createElement("li");
         li.textContent = (h.date || "") + " · " + who + " · " + (h.url || "") +
-          " · " + (h.answer || "нет ответа");
+          " · " + normalizeAnswer(h.answer);
         meet.appendChild(li);
       });
     }
     var sel = document.getElementById("f-answer");
     var last = (card.history || []).slice(-1)[0];
     sel.disabled = !last;
-    sel.value = (last && last.answer) ? last.answer : "нет ответа";
+    sel.value = last ? normalizeAnswer(last.answer) : "ожидание";
   }
 
-  function wire(card, db) {
-    document.getElementById("btn-save").addEventListener("click", function () {
-      card.displayName = document.getElementById("f-name").value;
-      card.note = document.getElementById("f-note").value;
-      card.status = document.getElementById("f-status").value;
-      card.color = chosenColor;
-      card.visual = card.visual || {};
-      card.visual.faded = card.status === "dirt"; /* «грязь» → блеклость */
-      CTX_STORAGE.saveDb(db).then(function () { window.close(); });
+  /* v07f4: ПРАВИЛО ЕДИНСТВЕННОГО ПИСАТЕЛЯ (устраняет D18 — воскрешение/стирание).
+   * Каждый saveDb — ТОЛЬКО после свежего loadDb в том же обработчике
+   * (read-modify-write); никаких «долгоживущих» объектов db для записи.
+   * db, загруженная при открытии окна, для записи НЕ используется. */
+  function wire(card) {
+    /* «Сохранить» — свежая db, правим найденную карточку, пишем, закрываем */
+    document.getElementById("btn-save").addEventListener("click", async function () {
+      var db = await CTX_STORAGE.loadDb();
+      var fresh = db.cards.find(function (c) { return c.cardId === cardId; });
+      if (!fresh) { window.close(); return; }
+      fresh.displayName = document.getElementById("f-name").value;
+      fresh.note = document.getElementById("f-note").value;
+      fresh.status = document.getElementById("f-status").value;
+      fresh.color = chosenColor;
+      fresh.visual = fresh.visual || {};
+      fresh.visual.faded = fresh.status === "dirt"; /* «грязь» → блеклость */
+      await CTX_STORAGE.saveDb(db);
+      console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
+      window.close();
     });
 
     /* «Ответ последнего контакта» → answer в последнюю запись истории */
-    document.getElementById("f-answer").addEventListener("change", function () {
-      var last = (card.history || []).slice(-1)[0];
+    document.getElementById("f-answer").addEventListener("change", async function () {
+      var db = await CTX_STORAGE.loadDb();
+      var fresh = db.cards.find(function (c) { return c.cardId === cardId; });
+      if (!fresh) return;
+      var last = (fresh.history || []).slice(-1)[0];
       if (!last) return;
       last.answer = document.getElementById("f-answer").value;
-      CTX_STORAGE.saveDb(db).then(function () { renderMeet(card); });
+      await CTX_STORAGE.saveDb(db);
+      console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
+      renderMeet(fresh);
     });
 
-    /* v07f3: УДАЛЕНИЕ ДОЛЖНО УДАЛЯТЬ — filter + saveDb + close.
-     * Кнопка привязана здесь; контент по storage.onChanged сам снимет метки. */
+    /* УДАЛЕНИЕ ДОЛЖНО УДАЛЯТЬ — свежая db, filter, saveDb, close.
+     * Контент по storage.onChanged сам снимет метки. */
     var btnDelete = document.getElementById("btn-delete");
     btnDelete.disabled = false;
-    btnDelete.addEventListener("click", function () {
+    btnDelete.addEventListener("click", async function () {
       if (!window.confirm("Удалить карточку " + cardId + "? Это действие нельзя отменить.")) return;
+      var db = await CTX_STORAGE.loadDb();
       db.cards = db.cards.filter(function (c) { return c.cardId !== cardId; });
-      CTX_STORAGE.saveDb(db).then(function () { window.close(); });
+      await CTX_STORAGE.saveDb(db);
+      console.log("[CTX " + CTX_BUILD + "] card " + cardId + " удалена");
+      console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
+      window.close();
     });
 
     document.getElementById("btn-close").addEventListener("click", function () {

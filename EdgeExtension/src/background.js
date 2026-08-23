@@ -14,6 +14,9 @@
  * v07f2: удостоверение без мусора — identity.url = cleanUrl(link)
  *   (только reply/thread/w; trackcode/recom и пр. отсекаются);
  *   запись истории {date, action, url, answer} (Решение №7).
+ * v07f3: точка встречи = первый комментарий (MET_HINT из wall_comment_date).
+ * v07f4: правило единственного писателя — каждый обработчик читает свежую db
+ *   перед saveDb (read-modify-write); лог «db записана (total N)» после каждой записи.
  * Vanilla JS, ноль зависимостей (§2.2).
  */
 importScripts("./core/messaging.js");
@@ -96,6 +99,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     logLine = "saved card " + cardId + " (total " + db.cards.length + ")";
   }
   await CTX_STORAGE.saveDb(db);
+  console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
 
   const captured = {
     menu: info.menuItemId, link: link, page: page,
@@ -157,6 +161,7 @@ async function handleSaveAuthor(payload) {
     console.log("[CTX " + CTX_BUILD + "] автор сохранён (card " + cardId + ")");
   }
   await CTX_STORAGE.saveDb(db);
+  console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
 }
 
 /* ---------- NAME_HINT: имя из первого якоря ---------- */
@@ -175,6 +180,7 @@ async function handleNameHint(payload) {
   if (it && !it.name) it.name = name;
   if (!card.displayName) card.displayName = name;
   await CTX_STORAGE.saveDb(db);
+  console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
   console.log("[CTX " + CTX_BUILD + "] имя сохранено: " + card.cardId + " → " + name);
 }
 
@@ -196,6 +202,7 @@ async function handleMetHint(payload) {
   const last = (card.history || []).slice(-1)[0];
   if (last) last.url = commentUrl;
   await CTX_STORAGE.saveDb(db);
+  console.log("[CTX " + CTX_BUILD + "] db записана (total " + db.cards.length + ")");
   console.log("[CTX " + CTX_BUILD + "] точка встречи: " + card.cardId + " → " + commentUrl);
 }
 
