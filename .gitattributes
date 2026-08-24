@@ -1,14 +1,22 @@
-# Автоопределение окончаний строк
-* text=auto
+# .gitattributes — нормализация строк и бинарники.
+# TASK-0100 (m3)
 
-# Текстовые файлы — LF
-*.js   text eol=lf
-*.json text eol=lf
-*.html text eol=lf
-*.css  text eol=lf
-*.md   text eol=lf
+# Текст — единый LF в репозитории.
+* text=auto eol=lf
+
+# Явно текстовые.
+*.md   text
+*.js   text
+*.ts   text
+*.tsx  text
+*.css  text
+*.html text
+*.json text
+*.jsonc text
 *.ps1  text eol=crlf
 
-# Бинарные файлы
-*.png binary
-*.ico binary
+# Явно бинарные (не диффить, не нормализовать).
+*.png  binary
+*.ico  binary
+*.jpg  binary
+*.svg  text

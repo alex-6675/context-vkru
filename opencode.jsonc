@@ -1,13 +1,39 @@
+// opencode.jsonc — конфигурация инструмента opencode для проекта context-vkru.
+// TASK-0002 · TASK-0100 (m3)
+// JSONC: комментарии допустимы, opencode их игнорирует.
 {
   "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "chrome-devtools": {
-      "type": "local",
-      "command": [
-        "npx", "-y", "chrome-devtools-mcp@latest",
-        "--browser-url=http://127.0.0.1:9222"
-      ],
-      "enabled": true
-    }
-  }
+
+  // Рабочая тема проекта: расширение Edge для vk.ru + журнал процесса (dashboard).
+  "theme": "dark",
+
+  // Модель по умолчанию для кодирования (переопределяется в сессии).
+  "model": "anthropic/claude-sonnet",
+
+  // Инструменты, разрешённые агенту в этом проекте.
+  "tools": {
+    "read": true,
+    "write": true,
+    "edit": true,
+    "glob": true,
+    "grep": true,
+    "bash": true,
+    "webfetch": true
+  },
+
+  // Команды проекта (быстрый запуск типовых операций).
+  "command": {
+    "build:dashboard": "npm run build",
+    "edge:cdp": "pwsh scripts/RunEdgeCdp.ps1",
+    "test:ext": "pwsh scripts/Test.ps1",
+    "migrate:m3": "pwsh scripts/migrate-to-m3.ps1"
+  },
+
+  // Инструкции агенту (отсылка к регламенту проекта).
+  "instructions": [
+    "Работай строго по задачам docs/tasks/ (статус NEW -> DONE, хэш в задаче).",
+    "Соблюдай регламент: docs/REGULATIONS.md, AGENTS.md (Дополнения А, Б).",
+    "Пакет EdgeExtension/ — чистый Vanilla JS, ноль зависимостей.",
+    "Код передаётся только закоммиченным файлом; статус DONE — после хэша пользователя."
+  ]
 }

@@ -1,13 +1,39 @@
 {
+  // TASK-0005 · TASK-0100 (m3) — запуск и отладка под Microsoft Edge.
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Attach Edge CDP 9222",
+      // Отладка расширения Edge: поднимает Edge с загруженным распакованным
+      // расширением EdgeExtension/ и подключается к его DevTools.
+      "name": "Edge: расширение (context-vkru)",
+      "type": "msedge",
+      "request": "launch",
+      "url": "https://vk.ru/",
+      "webRoot": "${workspaceFolder}/EdgeExtension",
+      "runtimeArgs": [
+        "--load-extension=${workspaceFolder}/EdgeExtension",
+        "--remote-debugging-port=9222"
+      ],
+      "userDataDir": "${workspaceFolder}/.edge-cdp-profile",
+      "sourceMaps": false
+    },
+    {
+      // Отладка дашборда (журнал процесса) в Edge.
+      "name": "Edge: дашборд (vite dev)",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/src",
+      "sourceMaps": true
+    },
+    {
+      // Подключение к уже запущенному Edge с CDP (см. scripts/RunEdgeCdp.ps1).
+      "name": "Edge: подключить к CDP :9222",
       "type": "msedge",
       "request": "attach",
       "port": 9222,
-      "urlFilter": "https://vk.ru/*",
-      "webRoot": "${workspaceFolder}/dist"
+      "url": "https://vk.ru/*",
+      "webRoot": "${workspaceFolder}/EdgeExtension"
     }
   ]
 }
