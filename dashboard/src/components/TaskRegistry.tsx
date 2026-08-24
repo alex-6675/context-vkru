@@ -11,8 +11,9 @@ const execOrder = [
   { id: "TASK-0009", area: "feat(ext)", what: "v05r — база, карточка v2, дедуп", state: "DONE · PASS · 2e01d91", done: true },
   { id: "TASK-0010", area: "feat(ext)", what: "v06r — маркировка сохранённых (▲/◆), фикс дедупа D1", state: "DONE · PASS · dce4ca7", done: true },
   { id: "TASK-0011", area: "feat(ext)", what: "v07g ФИНАЛЬНЫЙ — стекло, скальпель при нажатии, индикатор, структура src/ui", state: "NEW · исполнено · manifest 0.0.18", done: false },
-  { id: "TASK-0002", area: "chore(infra)", what: "RunEdgeCdp.ps1 · .gitignore · tasks/launch · opencode.jsonc", state: "очередь", done: false },
-  { id: "TASK-0005", area: "chore(env)", what: ".vscode — отдельным коммитом, не смешивая с ext/дашбордом", state: "очередь", done: false },
+  { id: "TASK-0002", area: "chore(infra)", what: "RunEdgeCdp.ps1 · .gitignore · tasks/launch · opencode.jsonc", state: "DONE · RunEdgeCdp.ps1 :9222", done: true },
+  { id: "TASK-0005", area: "chore(env)", what: ".vscode — launch.json под Edge + settings + extensions", state: "DONE · launch.json под Edge", done: true },
+  { id: "TASK-0100", area: "chore · m3", what: "m3 — приведение территории + каркас переноса (provenance)", state: "исполнено · ждёт хэша · migrate-to-m3.ps1", done: false },
   { id: "TASK-0008", area: "docs", what: "гигиена docs/tasks — хэши, формат, убрать «修改后»", state: "очередь", done: false },
   { id: "TASK-0004", area: "style(dashboard)", what: "строгий деловой дизайн, референс Gmail", state: "очередь · последним, после всех", done: false },
 ];

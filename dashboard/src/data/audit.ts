@@ -428,8 +428,11 @@ export const termLines: TermLine[] = [
   { type: "pass", text: "TASK-0009 (v05r): база, карточка v2, дедуп · DONE · 2e01d91" },
   { type: "pass", text: "TASK-0010 (v06r): маркировка сохранённых, фикс дедупа комментариев · DONE · dce4ca7" },
   { type: "warn", text: "TASK-0011: v07r…v07d — итерации → v07g ФИНАЛЬНЫЙ (0.0.18): стекло по координатам, скальпель = доступ «при нажатии», индикатор 3 состояний, локальный скальпель по выделению" },
+  { type: "pass", text: "TASK-0002: запуск Edge c --remote-debugging-port=9222 (scripts/RunEdgeCdp.ps1) · DONE" },
+  { type: "pass", text: "TASK-0005: .vscode/launch.json под Edge (+ settings/extensions) · DONE" },
+  { type: "warn", text: "TASK-0100 (m3): приведение территории + каркас переноса — scripts/migrate-to-m3.ps1, provenance, заглушки, docs, dashboard «прошлое–настоящее–будущее»" },
   { type: "arrow", text: "Б5: факт = репо пользователя · DONE только после хэша · содержимое выдано код-блоками" },
-  { type: "cmd", text: "ожидание хэша коммита feat(ext): v07g [TASK-0011]_" },
+  { type: "cmd", text: "ожидание хэша коммита chore: m3 — каркас и перенос [TASK-0100]_" },
 ];
 
 /* ---------- конфликт стека ---------- */
