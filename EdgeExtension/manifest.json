@@ -3,8 +3,9 @@
   "name": "__MSG_extName__",
   "description": "__MSG_extDescription__",
   "default_locale": "ru",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "permissions": ["contextMenus", "storage"],
+  "action": {},
   "background": {
     "service_worker": "src/background.js"
   },
@@ -15,6 +16,7 @@
         "src/core/messaging.js",
         "src/core/normalize.js",
         "src/core/storage.js",
+        "src/ui/layer.js",
         "src/content.js"
       ],
       "css": ["src/styles.css"],

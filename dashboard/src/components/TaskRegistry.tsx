@@ -10,7 +10,7 @@ const execOrder = [
   { id: "TASK-0007", area: "fix(dashboard)", what: "ремонт дашборда: data-модули, статусы, порядок группы", state: "частично · 4c307da · ждёт хэш репо-фиксации (Б5)", done: false },
   { id: "TASK-0009", area: "feat(ext)", what: "v05r — база, карточка v2, дедуп", state: "DONE · PASS · 2e01d91", done: true },
   { id: "TASK-0010", area: "feat(ext)", what: "v06r — маркировка сохранённых (▲/◆), фикс дедупа D1", state: "DONE · PASS · dce4ca7", done: true },
-  { id: "TASK-0011", area: "fix(ext)", what: "v07f6 — метка на каждое вхождение, без предохранителей", state: "NEW · исполнено · manifest 0.0.16", done: false },
+  { id: "TASK-0011", area: "feat(ext)", what: "v07g — стекло, скальпель, структура src/ui (отрисовка вне DOM VK)", state: "NEW · исполнено · manifest 0.0.18", done: false },
   { id: "TASK-0002", area: "chore(infra)", what: "RunEdgeCdp.ps1 · .gitignore · tasks/launch · opencode.jsonc", state: "очередь", done: false },
   { id: "TASK-0005", area: "chore(env)", what: ".vscode — отдельным коммитом, не смешивая с ext/дашбордом", state: "очередь", done: false },
   { id: "TASK-0008", area: "docs", what: "гигиена docs/tasks — хэши, формат, убрать «修改后»", state: "очередь", done: false },
