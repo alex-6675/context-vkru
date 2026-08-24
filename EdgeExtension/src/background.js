@@ -1,4 +1,4 @@
-/* Context VK.RU · v07f6 · background.js
+/* Context VK.RU · v07g · background.js
  * v03r: ПКМ-изъятие — браузер сам отдаёт linkUrl/pageUrl (Решение №2).
  * v04r: нормализатор — портал, id, тип (из меню), metPost (из page).
  * v05r: запись в базу (chrome.storage.local) по контракту карточки v2.
@@ -22,6 +22,12 @@
  * v07f6: NAME_HINT — displayName пишется ТОЛЬКО если пуст; если уже задан —
  *   НЕ трогается (лог «имя НЕ тронуто: cN (уже задано)»); identity.name —
  *   только если пуст. В db пишем лишь при фактическом изменении.
+ * v07g ФИНАЛЬНЫЙ: скальпель — через доступ браузера «при нажатии»
+ *   (CTX_TOGGLE убран). Клик по значку → CTX_SYNC во вкладку: полная
+ *   перерисовка стекла или локальный скальпель по текстовому выделению.
+ *   ИНДИКАТОР — badge трёх состояний (по сообщению BADGE из контента):
+ *   серый без текста = стекла нет; жёлтый «…» = поиск координат;
+ *   зелёный «N» = стекло внедрено.
  * Vanilla JS, ноль зависимостей (§2.2).
  */
 importScripts("./core/messaging.js");
@@ -29,7 +35,14 @@ importScripts("./core/normalize.js");
 importScripts("./core/storage.js");
 console.log("[CTX " + CTX_BUILD + "] service worker started");
 
+/* ИНДИКАТОР: по умолчанию бейджа нет (серый) = стекла нет. */
+function clearBadge() {
+  chrome.action.setBadgeText({ text: "" });
+  chrome.action.setBadgeBackgroundColor({ color: "#9aa0a6" });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
+  clearBadge();
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({ id: "save-person", title: "Сохранить персонажа", contexts: ["link"] });
     chrome.contextMenus.create({ id: "save-community", title: "Сохранить сообщество", contexts: ["link"] });
@@ -252,5 +265,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     console.log("[CTX " + CTX_BUILD + "] " + ((msg.payload && msg.payload.text) || ""));
     return false;
   }
+  /* v07g: ИНДИКАТОР — badge трёх состояний (ставится для вкладки-отправителя).
+   * search → жёлтый «…» (идёт поиск координат); ready → зелёный «N». */
+  if (msg.type === CTX_MSG.BADGE) {
+    const p = msg.payload || {};
+    const tabId = sender.tab ? sender.tab.id : undefined;
+    if (p.state === "search") {
+      chrome.action.setBadgeText({ text: "…", tabId: tabId });
+      chrome.action.setBadgeBackgroundColor({ color: "#e8b931", tabId: tabId });
+    } else if (p.state === "ready") {
+      chrome.action.setBadgeText({ text: String(p.count || 0), tabId: tabId });
+      chrome.action.setBadgeBackgroundColor({ color: "#3a7d44", tabId: tabId });
+    }
+    return false;
+  }
   return false;
+});
+
+/* ---------- v07g: КЛИК ПО ЗНАЧКУ → CTX_SYNC во вкладку ----------
+ * Контент сам решает: нет выделения → полная перерисовка стекла
+ * («искать новые координаты», лечит «стекло разбито»);
+ * есть текстовое выделение → локальный скальпель (маркеры только
+ * внутри ближайшего контейнера с выделением). */
+chrome.action.onClicked.addListener((tab) => {
+  if (!tab || tab.id === undefined) return;
+  chrome.tabs.sendMessage(tab.id, { type: CTX_MSG.CTX_SYNC }).catch(() => {
+    /* вкладка без контент-скрипта (нет доступа «при нажатии» или не vk.ru) */
+  });
 });

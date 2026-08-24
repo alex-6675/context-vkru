@@ -1,17 +1,11 @@
-/* Context VK.RU · v07g · content.js — ТОНКАЯ ТОЧКА ВХОДА (TASK-0011).
+/* Context VK.RU · src/content.js · v07g ФИНАЛЬНЫЙ
+ * ТОНКАЯ ТОЧКА ВХОДА. Отрисовка — на стекле (src/ui/layer.js), ВНЕ DOM VK.
+ * СКАЛЬПЕЛЬ — через доступ браузера «Разрешить только при нажатии»:
+ * нет доступа = контент не запущен = стекла нет, тишина.
  *
- * Стекло и скальпель живут в ui/layer.js (CTX_LAYER). В DOM портала не
- * добавляется ничего — отрисовка на собственном стекле (Решение: диагноз v07d).
- *
- * Контент отвечает только за:
- *  - старт + лог базы;
- *  - ИЗЪЯТИЕ (работает ВСЕГДА, независимо от скальпеля — это рука хирурга,
- *    а не скальпель): CAPTURED → NAME_HINT (guard: только пустое displayName —
- *    на стороне SW) и MET_HINT (точка встречи = первый комментарий);
- *  - ПКМ по дате комментария → SAVE_AUTHOR (автор, не «мусорная» карточка);
- *  - приём CTX_TOGGLE (клик по значку) → CTX_LAYER.toggle().
- *
- * Свои классы ctx-*; атрибуты узлов VK не трогаются.
+ * Обязанности: старт, лог db, приём CAPTURED и CTX_SYNC, изъятие
+ * (SAVE_AUTHOR / NAME_HINT / MET_HINT) — работает ВСЕГДА при данном доступе.
+ * CTX_TOGGLE убран (скальпель = доступ браузера).
  * Vanilla JS, ноль зависимостей (§2.2).
  */
 (() => {
@@ -28,16 +22,46 @@
   /* Дата комментария — ссылка wall…?reply=… (точка встречи). */
   const COMMENT_DATE_SEL = 'a[data-testid="wall' + U + 'comment' + U + 'date"]';
 
-  /* ---------- старт: лог базы + инициализация слоя ---------- */
+  /* ---------- стекло и индекс (layer.js) ---------- */
+  let INDEX = { byId: new Map() };
+
+  function buildIndex(db) {
+    const byId = new Map(); /* id -> карточка (▲) */
+    (db.cards || []).forEach((card) => {
+      (card.identities || []).forEach((it) => {
+        if (!it || !it.id) return;
+        if (!it.replyId) byId.set(it.id, card); /* метим только персоны/сообщества */
+      });
+    });
+    INDEX = { byId: byId };
+  }
+
+  /* ---------- старт: лог db + стекло ---------- */
   CTX_STORAGE.loadDb().then((db) => {
     const list = db.cards.map((c) => {
       const first = (c.identities && c.identities[0]) || {};
       return c.cardId + (first.id ? " (" + first.id + ")" : "");
     }).join(", ");
     console.log("[CTX " + CTX_BUILD + "] db: " + db.cards.length + " cards" + (list ? ": " + list : ""));
+    buildIndex(db);
+    if (typeof CTX_LAYER !== "undefined") CTX_LAYER.init();
   }).catch(() => {});
 
-  CTX_LAYER.init(); /* стекло + скальпель (по умолчанию ВЫКЛ — расширение молчит) */
+  /* ---------- CTX_SYNC: клик по значку расширения ----------
+   * нет выделения → полная перерисовка («искать новые координаты»);
+   * есть текстовое выделение → ЛОКАЛЬНЫЙ СКАЛЬПЕЛЬ: маркеры только
+   * внутри ближайшего контейнера, содержащего выделение. */
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (!msg || msg.type !== CTX_MSG.CTX_SYNC) return;
+    let scope = null;
+    const sel = typeof window.getSelection === "function" ? window.getSelection() : null;
+    if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+      const node = sel.getRangeAt(0).commonAncestorContainer;
+      const el = node && node.nodeType === 1 ? node : node && node.parentElement;
+      if (el) scope = el;
+    }
+    if (typeof CTX_LAYER !== "undefined") CTX_LAYER.init(scope);
+  });
 
   /* ---------- ПКМ по дате комментария → изъятие автора (SAVE_AUTHOR) ---------- */
   document.addEventListener("contextmenu", (e) => {
@@ -50,30 +74,19 @@
 
     const root = a.closest(COMMENT_ROOT_SEL);
     if (!root) return;
-
     const ownerA = root.querySelector('a[data-testid="comment-owner"]');
-    if (!ownerA || !ownerA.getAttribute("href")) {
-      console.log("[CTX " + CTX_BUILD + "] автор не найден — не сохранено");
-      return; /* карточка комментария НЕ создаётся */
-    }
+    const authorHref = ownerA ? ownerA.getAttribute("href") : "";
+    if (!authorHref) return; /* автор не найден — не сохраняем */
 
     chrome.runtime.sendMessage({
       type: CTX_MSG.SAVE_AUTHOR,
-      payload: { authorHref: ownerA.getAttribute("href"), metUrl: abs, page: location.href },
+      payload: { authorHref: authorHref, metUrl: abs, page: location.href },
     }).catch(() => {});
   });
 
-  /* ---------- приём сообщений ---------- */
+  /* ---------- приём CAPTURED (лог изъятия + NAME_HINT + MET_HINT) ---------- */
   chrome.runtime.onMessage.addListener((msg) => {
-    if (!msg || !msg.type) return;
-
-    /* СКАЛЬПЕЛЬ: клик по значку расширения (SW → контент) */
-    if (msg.type === CTX_MSG.CTX_TOGGLE) {
-      CTX_LAYER.toggle();
-      return;
-    }
-
-    if (msg.type !== CTX_MSG.CAPTURED) return;
+    if (!msg || msg.type !== CTX_MSG.CAPTURED) return;
     const p = msg.payload || {};
     console.log("[CTX " + CTX_BUILD + "] captured | menu: " + p.menu +
       " | portal: " + p.portal + " | id: " + p.id + " | type: " + p.type +
@@ -96,9 +109,8 @@
             payload: { id: p.id, name: a.textContent.trim() },
           }).catch(() => {});
 
-          /* ТОЧКА ВСТРЕЧИ = ПЕРВОЕ ОБЩЕНИЕ.
-           * Если якорь внутри комментария — берём его дату (wall…?reply=…)
-           * как commentUrl. Вне комментария SW оставляет metPost. */
+          /* ТОЧКА ВСТРЕЧИ = ПЕРВОЕ ОБЩЕНИЕ: если якорь внутри комментария —
+           * берём его дату (wall…?reply=…) как commentUrl. */
           const commentRoot = a.closest(COMMENT_ROOT_SEL) || a.closest("li");
           if (commentRoot) {
             const dateA = commentRoot.querySelector(COMMENT_DATE_SEL);

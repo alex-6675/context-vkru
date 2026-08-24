@@ -15,9 +15,16 @@ z-index:2147483000`) с абсолютно позиционированными 
 DOM 0`). Стекло живёт вне поддерева портала и структурно не стирается его
 ре-рендером.
 
-Включение слоя — «скальпель»: по умолчанию ВЫКЛ (расширение молчит),
-ВКЛ/ВЫКЛ — клик по значку расширения (`chrome.action.onClicked` →
-`CTX_TOGGLE`; состояние в `storage`; badge «on»/«»).
+**Скальпель = доступ браузера «Разрешить только при нажатии»**
+(пользователь переключает один раз; в манифесте этого нет). Нет доступа —
+контент не запущен, стекла нет, тишина. Клик по значку — `action.onClicked`
+→ `CTX_SYNC` во вкладку: нет выделения → полная перерисовка («искать новые
+координаты»); есть текстовое выделение → локальный скальпель (маркеры только
+внутри ближайшего контейнера с выделением).
+
+**Индикатор — три состояния на значке** (`setBadgeText`/`setBadgeBackgroundColor`,
+по сообщению `BADGE` из контента): серый без бейджа = стекла нет; жёлтый «…» =
+поиск координат (draw в процессе); зелёный «N» = стекло внедрено (N маркеров).
 
 ## §L — Структура каталогов (к факту v07g)
 
@@ -28,16 +35,15 @@ EdgeExtension/
 ├─ _locales/ru/messages.json
 └─ src/
    ├─ core/
-   │  ├─ messaging.js         CTX_BUILD, CTX_MSG (CAPTURED, OPEN_CARD, SAVE_AUTHOR,
-   │  │                       NAME_HINT, MET_HINT, LOG, CTX_TOGGLE)
-   │  ├─ normalize.js         portalOf / normalize / metPostOf / replyOf / cleanUrl
-   │  └─ storage.js           «ctxdb»: loadDb / saveDb (chrome.storage.local)
-   ├─ ui/
-   │  ├─ layer.js             СТЕКЛО: div#ctx-glass, draw(), скальпель (init/rescan/toggle)
-   │  └─ dialog.js            карточка коррекции (переезд из src/dialog.js в v07g)
-   ├─ background.js           SW: contextMenus, изъятие, дедуп, окна, скальпель (badge)
-   ├─ content.js              тонкая точка входа: изъятие всегда, CTX_TOGGLE → слой
-   └─ adapters/vkru.js        СНЯТ (Решение №2) — остаётся в репо, не инжектится
+    │  ├─ messaging.js         CTX_BUILD, CTX_MSG (CAPTURED, OPEN_CARD, SAVE_AUTHOR,
+    │  │                       NAME_HINT, MET_HINT, LOG, CTX_SYNC, BADGE)
+    │  ├─ normalize.js         portalOf / normalize / metPostOf / replyOf / cleanUrl
+    │  └─ storage.js           «ctxdb»: loadDb / saveDb (chrome.storage.local)
+    ├─ ui/
+    │  ├─ layer.js             СТЕКЛО: div#ctx-glass, draw(scope), триггеры, индикатор (init/rescan/draw)
+    │  └─ dialog.js            карточка коррекции (переезд из src/dialog.js в v07g)
+    ├─ background.js           SW: contextMenus, изъятие, дедуп, окна, CTX_SYNC, индикатор (badge)
+    ├─ content.js              тонкая точка входа: изъятие всегда, CTX_SYNC → init(scope)   └─ adapters/vkru.js        СНЯТ (Решение №2) — остаётся в репо, не инжектится
 
 popup.js — будущая картотека (R13).
 ```
