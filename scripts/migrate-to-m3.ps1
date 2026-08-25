@@ -25,7 +25,7 @@ $ErrorActionPreference = "Stop"
 $copied   = @()   # provenance: скопировано КАК ЕСТЬ
 $created  = @()   # создано (затычки / docs / dashboard)
 
-function Ensure-Dir([string]$p) {
+function New-Dir([string]$p) {
     if (-not (Test-Path -LiteralPath $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
 }
 
@@ -36,7 +36,7 @@ function Copy-Provenance([string]$rel) {
         Write-Warning "ИСТОЧНИК ОТСУТСТВУЕТ (пропущено): $rel"
         return
     }
-    Ensure-Dir (Split-Path $dst)
+    New-Dir (Split-Path $dst)
     Copy-Item -LiteralPath $src -Destination $dst -Force
     $hash = (Get-FileHash -LiteralPath $src -Algorithm SHA256).Hash
     $script:copied += [pscustomobject]@{ File = $rel; SHA256 = $hash }
@@ -44,7 +44,7 @@ function Copy-Provenance([string]$rel) {
 
 function Write-Stub([string]$rel, [string]$content) {
     $dst = Join-Path $TargetRoot $rel
-    Ensure-Dir (Split-Path $dst)
+    New-Dir (Split-Path $dst)
     Set-Content -LiteralPath $dst -Value $content -Encoding utf8 -NoNewline
     $script:created += $rel
 }
@@ -57,7 +57,7 @@ $dirs = @(
     "EdgeExtension/src/core", "EdgeExtension/src/ui",
     "reports", "scripts", "data", "icons"
 )
-foreach ($d in $dirs) { Ensure-Dir (Join-Path $TargetRoot $d) }
+foreach ($d in $dirs) { New-Dir (Join-Path $TargetRoot $d) }
 
 # ============================================================
 # 2. КОПИЯ КАК ЕСТЬ (provenance)
@@ -442,7 +442,7 @@ foreach ($s in $created) { [void]$report.AppendLine("- ``$s``") }
 [void]$report.AppendLine("- мемориальные данные mem-2026")
 [void]$report.AppendLine("")
 
-Ensure-Dir (Join-Path $TargetRoot "reports")
+New-Dir (Join-Path $TargetRoot "reports")
 $reportPath = Join-Path $TargetRoot "reports/migrate-m3-report.md"
 Set-Content -LiteralPath $reportPath -Value $report.ToString() -Encoding utf8
 
