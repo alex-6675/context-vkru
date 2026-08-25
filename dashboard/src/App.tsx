@@ -553,7 +553,7 @@ export default function App() {
             title="Шаг 3 · v_03 — VK.RU Adapter: обнаружение"
             sub="Рабочий лист исходной сборки по заданию docs/3A.md: таблица признаков 3A, конвейер обнаружения, листинги пакета, критерии TEST.md. Итоговый вердикт (по fix2) фиксируется в секции 01."
           />
-          <V03Sheet verdict={verdict} setVerdict={setVerdict} active={false} />
+          <V03Sheet verdict={verdict} setVerdict={setVerdict} />
         </section>
 
         {/* 04 — шаг 2 / v_02 (закрыт) */}
