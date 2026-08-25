@@ -25,6 +25,7 @@ export default function V03F2Section({
   verdict: Verdict;
   setVerdict: (v: Verdict) => void;
   active?: boolean;
+  locked?: boolean;
 }) {
   const [note, setNote] = useState("");
 

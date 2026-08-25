@@ -28,6 +28,8 @@ export default function V03RSection({
 }: {
   verdict: Verdict;
   setVerdict: (v: Verdict) => void;
+  active?: boolean;
+  locked?: boolean;
 }) {
   const [note, setNote] = useState("");
 

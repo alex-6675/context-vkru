@@ -73,6 +73,7 @@ export default function V02Sheet({
   verdict: Verdict;
   setVerdict: (v: Verdict) => void;
   locked?: boolean;
+  active?: boolean;
 }) {
   const [tab, setTab] = useState(0);
   const [copied, setCopied] = useState(false);
